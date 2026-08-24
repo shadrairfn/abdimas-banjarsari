@@ -85,6 +85,8 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
   const [radiusKm, setRadiusKm] = useState<number | null>(10);
   const [viewportBounds, setViewportBounds] = useState<ViewportBounds | null>(null);
   const [center, setCenter] = useState(BANJARSARI_CENTER);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isLiveTracking, setIsLiveTracking] = useState(false);
   const [centerLabel, setCenterLabel] = useState("Pusat Desa Banjarsari");
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
   const [mobileListOpen, setMobileListOpen] = useState(false);
@@ -93,8 +95,76 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
   const [mapMoving, setMapMoving] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(390);
   const [isResizing, setIsResizing] = useState(false);
+  const watchIdRef = useRef<number | null>(null);
 
   const stopResize = useCallback(() => setIsResizing(false), []);
+
+  const stopLiveTracking = useCallback(() => {
+    if (watchIdRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    setIsLiveTracking(false);
+  }, []);
+
+  const startLiveTracking = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationMessage("Perangkat ini tidak mendukung akses lokasi GPS.");
+      return;
+    }
+    stopLiveTracking();
+    setLocationMessage("Mencari sinyal GPS realtime…");
+
+    const id = navigator.geolocation.watchPosition(
+      ({ coords }) => {
+        const userCoords = { latitude: coords.latitude, longitude: coords.longitude };
+        setUserLocation(userCoords);
+        setCenter(userCoords);
+        setCenterLabel("Lokasi Saya (Real-time)");
+        setFitRequest((current) => ({
+          key: current.key + 1,
+          center: userCoords,
+          radiusKm,
+          zoom: 16,
+        }));
+        setLocationMessage(null);
+        setIsLiveTracking(true);
+      },
+      (error) => {
+        let msg = "Gagal mengakses lokasi.";
+        if (error.code === error.PERMISSION_DENIED) msg = "Izin akses lokasi ditolak oleh peramban.";
+        else if (error.code === error.POSITION_UNAVAILABLE) msg = "Sinyal GPS / lokasi tidak tersedia.";
+        else if (error.code === error.TIMEOUT) msg = "Waktu pencarian lokasi habis.";
+        setLocationMessage(msg);
+        setIsLiveTracking(false);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 1000,
+        timeout: 12000,
+      },
+    );
+    watchIdRef.current = id;
+    setIsLiveTracking(true);
+  }, [radiusKm, stopLiveTracking]);
+
+  const toggleLiveTracking = useCallback(() => {
+    if (isLiveTracking) {
+      stopLiveTracking();
+      setLocationMessage("Pelacakan lokasi dinonaktifkan.");
+      setTimeout(() => setLocationMessage(null), 3000);
+    } else {
+      startLiveTracking();
+    }
+  }, [isLiveTracking, startLiveTracking, stopLiveTracking]);
+
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isResizing) return;
@@ -189,6 +259,8 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
   }
 
   function resetCenter() {
+    stopLiveTracking();
+    setUserLocation(null);
     setCenter(BANJARSARI_CENTER);
     setCenterLabel("Pusat Desa Banjarsari");
     setFitRequest((current) => ({ key: current.key + 1, center: BANJARSARI_CENTER, radiusKm }));
@@ -201,8 +273,13 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
       if (Math.abs(current.latitude - viewport.center.latitude) < 0.000001 && Math.abs(current.longitude - viewport.center.longitude) < 0.000001) return current;
       return viewport.center;
     });
-    if (userInitiated) setCenterLabel("Pusat area peta");
-  }, []);
+    if (userInitiated) {
+      if (isLiveTracking) {
+        stopLiveTracking();
+      }
+      setCenterLabel("Pusat area peta");
+    }
+  }, [isLiveTracking, stopLiveTracking]);
 
   function selectRadius(radius: number) {
     if (radiusKm === radius) {
@@ -341,6 +418,7 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
             items={filteredItems.map(({ item }) => item)}
             selectedId={selectedId}
             center={center}
+            userLocation={userLocation}
             radiusKm={radiusKm}
             fitRequest={fitRequest}
             onSelect={setSelectedId}
@@ -351,9 +429,19 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
           <div className="map-center-indicator" aria-hidden="true"><span /></div>
 
           <div className="map-floating-filters">
-            {/* <button className="location-pill" onClick={requestLocation}>
-              <LocateFixed size={17} /> Gunakan lokasi saya
-            </button> */}
+            <button
+              className={`location-pill ${isLiveTracking ? "tracking-active" : ""}`}
+              onClick={toggleLiveTracking}
+              aria-pressed={isLiveTracking}
+              title={isLiveTracking ? "Klik untuk menghentikan pelacakan realtime" : "Aktifkan pelacakan lokasi GPS realtime"}
+            >
+              <LocateFixed size={17} className={isLiveTracking ? "live-pulse-icon" : ""} />
+              <span>{isLiveTracking ? "Lacak Live Aktif" : "Lokasi Saya"}</span>
+            </button>
+            <div className="live-coords-pill" title="Koordinat titik tengah realtime">
+              <MapPin size={13} />
+              <span>{center.latitude.toFixed(5)}, {center.longitude.toFixed(5)}</span>
+            </div>
             <button className="mobile-results-button" onClick={() => setMobileListOpen(true)}>
               <Store size={17} /> {filteredItems.length} hasil <ChevronDown size={16} />
             </button>

@@ -18,6 +18,7 @@ interface UmkmMapProps {
   items: Umkm[];
   selectedId: string | null;
   center: { latitude: number; longitude: number };
+  userLocation?: { latitude: number; longitude: number } | null;
   radiusKm: number | null;
   fitRequest: {
     key: number;
@@ -80,6 +81,7 @@ function UmkmMapWithMarkers({
   items,
   selectedId,
   center,
+  userLocation,
   radiusKm,
   fitRequest,
   onSelect,
@@ -89,6 +91,7 @@ function UmkmMapWithMarkers({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Map<string, Marker>>(new Map());
+  const userMarkerRef = useRef<Marker | null>(null);
   const onSelectRef = useRef(onSelect);
   const onViewportChangeRef = useRef(onViewportChange);
   const onMovingChangeRef = useRef(onMovingChange);
@@ -141,12 +144,35 @@ function UmkmMapWithMarkers({
     });
     mapRef.current = map;
     return () => {
+      userMarkerRef.current?.remove();
+      userMarkerRef.current = null;
       markers.forEach((marker) => marker.remove());
       markers.clear();
       map.remove();
       mapRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!userLocation) {
+      userMarkerRef.current?.remove();
+      userMarkerRef.current = null;
+      return;
+    }
+    if (!userMarkerRef.current) {
+      const element = document.createElement("div");
+      element.className = "user-live-marker";
+      element.setAttribute("aria-label", "Lokasi Anda saat ini");
+      element.innerHTML = '<span class="user-live-pulse"></span><span class="user-live-dot"></span>';
+      userMarkerRef.current = new Marker({ element })
+        .setLngLat([userLocation.longitude, userLocation.latitude])
+        .addTo(map);
+    } else {
+      userMarkerRef.current.setLngLat([userLocation.longitude, userLocation.latitude]);
+    }
+  }, [userLocation]);
 
   useEffect(() => {
     const map = mapRef.current;
