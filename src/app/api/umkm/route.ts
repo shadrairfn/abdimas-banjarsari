@@ -1,27 +1,44 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { listUmkm } from "@/data/umkm-repository";
+import { filterUmkm } from "@/features/umkm/search";
+import { asyncHandler } from "@/lib/http/async-handler";
+import { SuccessResponse, sendSuccess } from "@/lib/http/success-response";
 
-function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
-  const toRad = (value: number) => (value * Math.PI) / 180;
-  const latDelta = toRad(lat2 - lat1);
-  const lngDelta = toRad(lng2 - lng1);
-  const value = Math.sin(latDelta / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(lngDelta / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+// A missing or non-numeric parameter means "not provided", never 0.
+function readNumberParam(searchParams: URLSearchParams, name: string) {
+  const raw = searchParams.get(name);
+  if (raw === null || raw.trim() === "") return null;
+
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
 }
 
-export async function GET(request: NextRequest) {
-  const umkmData = await listUmkm();
-  const query = request.nextUrl.searchParams.get("q")?.trim().toLocaleLowerCase("id-ID") ?? "";
-  const subCategory = request.nextUrl.searchParams.get("subcategory") ?? "";
-  const latitude = Number(request.nextUrl.searchParams.get("lat"));
-  const longitude = Number(request.nextUrl.searchParams.get("lng"));
-  const radius = Number(request.nextUrl.searchParams.get("radius"));
-  const hasRadius = Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(radius) && radius > 0;
-  const data = umkmData.filter((item) => {
-    const matchesQuery = !query || `${item.brand} ${item.ownerName} ${item.products} ${item.address}`.toLocaleLowerCase("id-ID").includes(query);
-    const matchesCategory = !subCategory || item.subCategory === subCategory;
-    const matchesRadius = !hasRadius || distanceKm(latitude, longitude, item.latitude, item.longitude) <= radius;
-    return matchesQuery && matchesCategory && matchesRadius;
+/**
+ * Public list of UMKM, optionally filtered.
+ * @route GET /api/umkm?q=&subcategory=&lat=&lng=&radius=
+ */
+export const GET = asyncHandler(async (request: NextRequest) => {
+  const { searchParams } = request.nextUrl;
+  const latitude = readNumberParam(searchParams, "lat");
+  const longitude = readNumberParam(searchParams, "lng");
+  const hasCenter = latitude !== null && longitude !== null;
+
+  const allItems = await listUmkm();
+
+  const items = filterUmkm(allItems, {
+    query: searchParams.get("q") ?? "",
+    subCategory: searchParams.get("subcategory") ?? "",
+    center: hasCenter ? { latitude, longitude } : null,
+    radiusKm: readNumberParam(searchParams, "radius"),
   });
-  return Response.json({ data, total: data.length, locationAccuracy: data.every((item) => item.locationStatus === "verified") ? "verified" : "mixed" });
-}
+
+  const hasOnlyVerifiedLocations = items.every((item) => item.locationStatus === "verified");
+
+  const responseData = {
+    items,
+    total: items.length,
+    locationAccuracy: hasOnlyVerifiedLocations ? "verified" : "mixed",
+  };
+
+  return sendSuccess(new SuccessResponse(200, "Data UMKM berhasil dimuat.", responseData));
+});

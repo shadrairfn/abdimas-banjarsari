@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { listAdmins } from "@/data/admin-repository";
 import { listUmkm } from "@/data/umkm-repository";
 import { AdminDashboard } from "@/features/umkm/components/admin-dashboard";
 import { getActiveAdmin } from "@/lib/auth/admin";
@@ -14,5 +15,6 @@ export default async function AdminPage() {
     if (!user) redirect("/admin/login");
     adminEmail = user.email;
   }
-  return <AdminDashboard items={await listUmkm()} configured={configured} adminEmail={adminEmail} />;
+  const [items, adminList] = await Promise.all([listUmkm(), listAdmins()]);
+  return <AdminDashboard items={items} adminList={adminList} configured={configured} adminEmail={adminEmail} />;
 }

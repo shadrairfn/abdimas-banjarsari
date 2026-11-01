@@ -137,6 +137,11 @@ export const umkmData: Umkm[] = rawUmkm.map((row) => {
     latitude: coordinates.latitude,
     longitude: coordinates.longitude,
     locationStatus: OUTSIDE_NUMBERS.has(sourceNo) ? "outside" : "estimated",
+    contact: "08123456789",
+    website: undefined,
+    openingHours: "08:00",
+    closingHours: sourceNo % 5 === 0 ? "08:00" : "21:00",
+    photos: [],
   };
 });
 

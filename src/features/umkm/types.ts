@@ -17,6 +17,11 @@ export interface Umkm {
   latitude: number;
   longitude: number;
   locationStatus: LocationStatus;
+  contact?: string;
+  website?: string;
+  openingHours?: string;
+  closingHours?: string;
+  photos?: string[];
 }
 
 export const BANJARSARI_CENTER: { latitude: number; longitude: number } = {

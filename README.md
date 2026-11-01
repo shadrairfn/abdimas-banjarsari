@@ -306,7 +306,32 @@ Contoh:
 http://localhost:3000/api/umkm?q=cireng&lat=-7.238&lng=107.8395&radius=5
 ```
 
+Semua respons API memakai bentuk yang sama. Respons berhasil:
+
+```json
+{
+  "statusCode": 200,
+  "message": "Data UMKM berhasil dimuat.",
+  "data": { "items": [], "total": 0, "locationAccuracy": "verified" },
+  "success": true
+}
+```
+
+Respons gagal:
+
+```json
+{ "success": false, "message": "Akses admin diperlukan.", "errors": [], "data": null }
+```
+
 ## API admin
+
+Endpoint unggah foto (maksimal 10 file JPG/PNG/WEBP/GIF, 5 MB per file; field form `files`):
+
+```text
+POST /api/admin/upload
+```
+
+Respons berhasil menggunakan status `201` dengan `data.urls` berisi URL publik foto.
 
 Endpoint penghapusan UMKM:
 

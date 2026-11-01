@@ -1,59 +1,38 @@
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { getActiveAdmin } from "@/lib/auth/admin";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { idSchema } from "@/features/umkm/validation";
+import { requireAdmin } from "@/lib/auth/admin";
+import { ApiResponse } from "@/lib/http/api-response";
+import { asyncHandler } from "@/lib/http/async-handler";
+import { parseInput } from "@/lib/http/parse-input";
+import { SuccessResponse, sendSuccess } from "@/lib/http/success-response";
+import { revalidateUmkmPages } from "@/lib/revalidate";
 
-const idSchema = z.string().uuid();
+/**
+ * Delete one UMKM. Admin only.
+ * @route DELETE /api/admin/umkm/:id
+ * @throws {ApiResponse} 400 invalid id, 401 not admin, 404 not found
+ */
+export const DELETE = asyncHandler(
+  async (_request: Request, { params }: { params: Promise<{ id: string }> }) => {
+    const { supabase } = await requireAdmin();
+    const id = parseInput(idSchema, (await params).id);
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  if (!isSupabaseConfigured()) {
-    return Response.json(
-      { message: "Supabase belum dikonfigurasi." },
-      { status: 503 },
-    );
-  }
+    const { data, error } = await supabase
+      .from("umkm")
+      .delete()
+      .eq("id", id)
+      .select("id")
+      .maybeSingle();
 
-  const parsedId = idSchema.safeParse((await params).id);
-  if (!parsedId.success) {
-    return Response.json({ message: "ID UMKM tidak valid." }, { status: 400 });
-  }
+    if (error) {
+      throw new ApiResponse(500, `UMKM gagal dihapus: ${error.message}`);
+    }
 
-  const supabase = await createSupabaseServerClient();
-  const admin = await getActiveAdmin(supabase);
-  if (!admin) {
-    return Response.json({ message: "Akses admin diperlukan." }, { status: 401 });
-  }
+    if (!data) {
+      throw new ApiResponse(404, "UMKM tidak ditemukan.");
+    }
 
-  const { data, error } = await supabase
-    .from("umkm")
-    .delete()
-    .eq("id", parsedId.data)
-    .select("id")
-    .maybeSingle();
+    revalidateUmkmPages(id);
 
-  if (error) {
-    return Response.json(
-      { message: `UMKM gagal dihapus: ${error.message}` },
-      { status: 500 },
-    );
-  }
-
-  if (!data) {
-    return Response.json({ message: "UMKM tidak ditemukan." }, { status: 404 });
-  }
-
-  revalidatePath("/");
-  revalidatePath("/admin");
-  revalidatePath("/api/umkm");
-  revalidatePath(`/umkm/${parsedId.data}`);
-
-  return Response.json({
-    success: true,
-    message: "UMKM berhasil dihapus.",
-    id: parsedId.data,
-  });
-}
+    return sendSuccess(new SuccessResponse(200, "UMKM berhasil dihapus.", { id }));
+  },
+);

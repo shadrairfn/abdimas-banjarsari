@@ -1,22 +1,22 @@
-import { existsSync } from "node:fs";
-import { loadEnvFile } from "node:process";
 import { createClient } from "@supabase/supabase-js";
+import { loadSupabaseEnv } from "./load-env.mjs";
 
-const envFile = existsSync(".env.local") ? ".env.local" : existsSync(".env") ? ".env" : null;
-if (envFile) loadEnvFile(envFile);
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const { url, serviceRoleKey } = loadSupabaseEnv();
 const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
 const password = process.env.ADMIN_PASSWORD;
 const fullName = process.env.ADMIN_FULL_NAME?.trim() || "Administrator UMKM";
 
-if (!url || !serviceRoleKey) {
-  throw new Error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required in .env.local or .env.");
+if (!email || !email.includes("@")) {
+  throw new Error("ADMIN_EMAIL must contain a valid email address.");
 }
-if (!email || !email.includes("@")) throw new Error("ADMIN_EMAIL must contain a valid email address.");
-if (!password || password.length < 8) throw new Error("ADMIN_PASSWORD must contain at least 8 characters.");
-if (fullName.length < 2 || fullName.length > 120) throw new Error("ADMIN_FULL_NAME must contain 2-120 characters.");
+
+if (!password || password.length < 8) {
+  throw new Error("ADMIN_PASSWORD must contain at least 8 characters.");
+}
+
+if (fullName.length < 2 || fullName.length > 120) {
+  throw new Error("ADMIN_FULL_NAME must contain 2-120 characters.");
+}
 
 const supabase = createClient(url, serviceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },
