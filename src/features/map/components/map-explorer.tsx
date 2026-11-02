@@ -6,8 +6,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Clock,
   Columns2,
   ExternalLink,
@@ -301,6 +303,8 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
   const [area, setArea] = useState<Area>(startArea);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  // Hides the cards at the bottom so the whole map is visible.
+  const [carouselHidden, setCarouselHidden] = useState(restored?.carouselHidden === true);
   const [selectedId, setSelectedId] = useState<string | null>(startItem?.id ?? null);
   const [detailOpen, setDetailOpen] = useState(startsWithDetail);
   const [center, setCenter] = useState<Coordinates>(startCenter);
@@ -670,8 +674,8 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
 
   // Remember the view so coming back from a profile shows the same map.
   useEffect(() => {
-    saveMapView({ query, category, area, selectedId, detailOpen, center, camera });
-  }, [area, camera, category, center, detailOpen, query, selectedId]);
+    saveMapView({ query, category, area, selectedId, detailOpen, center, camera, carouselHidden });
+  }, [area, camera, carouselHidden, category, center, detailOpen, query, selectedId]);
 
   useEffect(() => { saveCompareIds(compareIds); }, [compareIds]);
 
@@ -890,12 +894,22 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
           </>
         ) : (
           <>
-            <div className="map-row">
+            <div className={`map-row${carouselHidden ? " collapsed" : ""}`}>
               <div className="fcard" style={{ display: "flex", alignItems: "center", gap: 16, padding: "6px 14px", height: 40 }}>
                 <span className="fw6">{ranked.length} UMKM</span>
                 <Legend />
               </div>
               <div className="fcard" style={{ display: "flex" }}>
+                <button
+                  type="button"
+                  className="btn ic g"
+                  aria-label={carouselHidden ? "Tampilkan daftar" : "Sembunyikan daftar"}
+                  aria-expanded={!carouselHidden}
+                  title={carouselHidden ? "Tampilkan daftar" : "Sembunyikan daftar"}
+                  onClick={() => setCarouselHidden((hidden) => !hidden)}
+                >
+                  {carouselHidden ? <ChevronUp className="i" /> : <ChevronDown className="i" />}
+                </button>
                 <button type="button" className="btn ic g" aria-label="Sebelumnya" title="Sebelumnya" disabled={activeIndex <= 0} onClick={() => stepSelection(-1)}>
                   <ChevronLeft className="i" />
                 </button>
@@ -904,7 +918,7 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
                 </button>
               </div>
             </div>
-            <div className="carousel" ref={carouselRef}>
+            <div className="carousel" ref={carouselRef} hidden={carouselHidden}>
               {ranked.map((entry) => (
                 <UmkmCard
                   key={entry.item.id}
@@ -957,7 +971,7 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
         </div>
 
         {compareItems.length > 0 && (
-          <div className={`fcard compare-tray${detailItem ? " detail" : ""}`} role="region" aria-label="Perbandingan UMKM">
+          <div className={`fcard compare-tray${detailItem ? " detail" : ""}${carouselHidden && !detailItem ? " low" : ""}`} role="region" aria-label="Perbandingan UMKM">
             <div className="compare-slots">
               {[0, 1].map((slot) => {
                 const item = compareItems[slot];

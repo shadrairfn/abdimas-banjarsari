@@ -16,6 +16,7 @@ export interface SavedMapView {
   detailOpen: boolean;
   center: { latitude: number; longitude: number };
   camera: MapCamera | null;
+  carouselHidden: boolean;
 }
 
 function isNumber(value: unknown): value is number {
@@ -49,6 +50,7 @@ export function loadMapView(): SavedMapView | null {
       detailOpen: value.detailOpen === true,
       center: value.center,
       camera: isCamera(value.camera) ? value.camera : null,
+      carouselHidden: value.carouselHidden === true,
     };
   } catch {
     return null;
