@@ -4,10 +4,13 @@ Aplikasi peta interaktif untuk menemukan serta mengelola UMKM di Desa Banjarsari
 
 ## Fitur utama
 
-- Peta interaktif MapLibre dengan tile OpenStreetMap.
+- Peta interaktif MapLibre dengan peta vektor OpenFreeMap (data OpenStreetMap) yang diwarnai ulang mengikuti tema terang/gelap.
+- Antarmuka mengikuti desain "Peta UMKM — Opsi C" (gaya shadcn/ui, font Geist, warna utama lime).
 - Marker berbeda untuk kategori Camilan, Makanan, Minuman, serta Kue & Roti.
-- Pencarian berdasarkan nama usaha, pemilik, produk, dan alamat.
-- Peta otomatis berpindah, memperbesar area, dan memilih toko dengan hasil pencarian terbaik.
+- Pencarian berdasarkan nama usaha, pemilik, produk, kampung, dan kategori. Pencarian mengabaikan filter jarak, jadi UMKM di luar radius tetap ditemukan.
+- Peta otomatis berpindah dan menyesuaikan zoom ke hasil pencarian; Enter memilih hasil teratas.
+- Setelah membuka profil UMKM lalu kembali, peta tampil persis seperti sebelumnya (posisi, zoom, pencarian, filter, dan panel detail). Keadaan disimpan per tab di `sessionStorage`.
+- Bandingkan dua UMKM berdampingan di `/bandingkan` (dari kartu, panel detail, atau halaman profil), dengan sorotan perbedaan data.
 - Filter kategori dan radius 1–20 km.
 - Radius mengikuti pusat viewport dan melakukan auto-zoom saat dipilih.
 - Radius dapat dinonaktifkan; dalam mode ini hanya UMKM di viewport yang ditampilkan.
@@ -23,7 +26,7 @@ Aplikasi peta interaktif untuk menemukan serta mengelola UMKM di Desa Banjarsari
 
 - Next.js 16 dan React 19
 - TypeScript
-- Tailwind CSS 4
+- Tailwind CSS 4 (token dan komponen desain berada di `src/app/globals.css`)
 - MapLibre GL
 - Supabase PostgreSQL dan Supabase Auth
 - Zod

@@ -1,5 +1,5 @@
 import { listUmkm } from "@/data/umkm-repository";
-import { MapExplorer } from "@/features/map/components/map-explorer";
+import { MapExplorerLoader } from "@/features/map/components/map-explorer-loader";
 
 export default async function Home({
   searchParams,
@@ -8,5 +8,5 @@ export default async function Home({
 }) {
   const { selected } = await searchParams;
   const items = await listUmkm();
-  return <MapExplorer initialItems={items} initialSelectedId={selected} />;
+  return <MapExplorerLoader initialItems={items} initialSelectedId={selected} />;
 }

@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/copy-maplibre-worker.mjs && next dev",
+    "build": "node scripts/copy-maplibre-worker.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "seed:supabase": "node scripts/seed-supabase.mjs",
+    "seed:dummy": "node scripts/seed-dummy.mjs",
     "seed:admin": "node scripts/seed-admin.mjs"
   },
   "dependencies": {

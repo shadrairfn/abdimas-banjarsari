@@ -6,13 +6,29 @@ import {
   type GeoJSONSource,
   Map as MapLibreMap,
   Marker,
-  NavigationControl,
-  ScaleControl,
-  type StyleSpecification,
+  setWorkerUrl,
 } from "maplibre-gl";
 import type { FeatureCollection, Polygon } from "geojson";
-import { categoryMarkerSvg } from "@/features/umkm/categories";
+import { categoryIconSvg, CATEGORY_CONFIG } from "@/features/umkm/categories";
+import { applyMapPalette, getRingColor, MAP_STYLE_URL } from "@/features/map/map-style";
+import { displayText } from "@/features/umkm/format";
 import type { Umkm } from "@/features/umkm/types";
+import type { Theme } from "@/lib/theme/use-theme";
+
+// Copied to public/ by scripts/copy-maplibre-worker.mjs, see the note there.
+setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
+
+export interface MapControls {
+  zoomIn: () => void;
+  zoomOut: () => void;
+}
+
+interface Padding {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
 
 interface UmkmMapProps {
   items: Umkm[];
@@ -20,47 +36,40 @@ interface UmkmMapProps {
   center: { latitude: number; longitude: number };
   userLocation?: { latitude: number; longitude: number } | null;
   radiusKm: number | null;
+  // Where the map starts, instead of `center`, when the last view is restored.
+  initialCamera?: { latitude: number; longitude: number; zoom: number } | null;
   fitRequest: {
     key: number;
     center: { latitude: number; longitude: number };
     radiusKm: number | null;
     zoom?: number;
+    // Zoom in to at least this level, but never zoom out.
+    minZoom?: number;
+    // Fit these [west, south, east, north] bounds, e.g. all search results.
+    bounds?: [number, number, number, number];
+    padding?: Padding;
+    // Jump without animation.
+    instant?: boolean;
+    // Drop this request while the map is already moving, e.g. a GPS update during a fly-to.
+    skipIfMoving?: boolean;
   };
-  theme?: "light" | "dark";
+  theme?: Theme;
   onSelect: (id: string) => void;
   onViewportChange: (viewport: {
     center: { latitude: number; longitude: number };
+    zoom: number;
     bounds: { north: number; south: number; east: number; west: number };
   }, userInitiated: boolean) => void;
   onMovingChange: (moving: boolean) => void;
   onZoomRadiusChange?: (radiusKm: number) => void;
   onUserZoom?: (visibleRadiusKm: number) => void;
+  onReady?: (controls: MapControls) => void;
 }
 
-const mapStyle: StyleSpecification = {
-  version: 8,
-  sources: {
-    "openstreetmap": {
-      type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "&copy; OpenStreetMap contributors",
-    },
-  },
-  layers: [
-    {
-      id: "openstreetmap",
-      type: "raster",
-      source: "openstreetmap",
-      paint: {
-        "raster-saturation": -0.06,
-        "raster-contrast": 0.04,
-        "raster-brightness-min": 0.05,
-        "raster-brightness-max": 0.98,
-      },
-    },
-  ],
-};
+// The radius circle fills about 75% of the map height, like the design, instead of touching the edges.
+const FIT_MARGIN = 1.35;
+// Space around search results so pins at the edge are not hidden under the floating cards.
+const FIT_BOUNDS_PADDING = 48;
 
 function radiusPolygon(center: UmkmMapProps["center"], radiusKm: number): FeatureCollection<Polygon> {
   const points: [number, number][] = [];
@@ -87,12 +96,53 @@ function radiusBounds(center: UmkmMapProps["center"], radiusKm: number): [[numbe
   ];
 }
 
+// Same structure as the pins of the design: .pin-marker > .pin (+ .lab).
+function createMarkerElement(item: Umkm) {
+  const element = document.createElement("button");
+  element.type = "button";
+  element.className = "pin-marker";
+  element.title = `${displayText(item.brand)} · ${item.subCategory}`;
+  element.setAttribute("aria-label", `Pilih ${displayText(item.brand)}, kategori ${item.subCategory}`);
+
+  const pinClass = CATEGORY_CONFIG[item.subCategory].pinClass;
+  const estimated = item.locationStatus === "verified" ? "" : " est";
+  const verifiedDot = item.locationStatus === "verified" ? '<span class="vd"></span>' : "";
+  const pin = document.createElement("div");
+  pin.className = `pin ${pinClass}${estimated}`;
+  pin.innerHTML = `${categoryIconSvg(item.subCategory)}${verifiedDot}`;
+
+  const label = document.createElement("span");
+  label.className = "lab";
+  label.textContent = displayText(item.brand);
+
+  element.append(pin, label);
+  return element;
+}
+
+function setMarkerSelected(marker: Marker, selected: boolean) {
+  const element = marker.getElement();
+  const pin = element.querySelector(".pin");
+  const label = element.querySelector<HTMLElement>(".lab");
+  const icon = pin?.querySelector("svg");
+
+  element.classList.toggle("is-selected", selected);
+  element.style.zIndex = selected ? "6" : "2";
+  pin?.classList.toggle("sel", selected);
+  icon?.setAttribute("style", selected ? "width:22px;height:22px" : "");
+  if (label) {
+    label.style.fontWeight = selected ? "700" : "";
+    label.style.fontSize = selected ? "12.5px" : "";
+  }
+  element.setAttribute("aria-pressed", String(selected));
+}
+
 function UmkmMapWithMarkers({
   items,
   selectedId,
   center,
   userLocation,
   radiusKm,
+  initialCamera,
   fitRequest,
   theme = "light",
   onSelect,
@@ -100,6 +150,7 @@ function UmkmMapWithMarkers({
   onMovingChange,
   onZoomRadiusChange,
   onUserZoom,
+  onReady,
 }: UmkmMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -110,8 +161,9 @@ function UmkmMapWithMarkers({
   const onMovingChangeRef = useRef(onMovingChange);
   const onZoomRadiusChangeRef = useRef(onZoomRadiusChange);
   const onUserZoomRef = useRef(onUserZoom);
-  const hasSelectionRef = useRef(Boolean(selectedId));
+  const onReadyRef = useRef(onReady);
   const markerItemsRef = useRef(items);
+  const selectedIdRef = useRef(selectedId);
   const themeRef = useRef(theme);
   const circleData = useMemo<FeatureCollection<Polygon>>(
     () => radiusKm === null ? { type: "FeatureCollection", features: [] } : radiusPolygon(center, radiusKm),
@@ -119,9 +171,10 @@ function UmkmMapWithMarkers({
   );
   const initialCircleData = useRef(circleData);
   const initialCenter = useRef(center);
+  const initialView = useRef(initialCamera);
   const markerItemsKey = useMemo(
     () => items
-      .map((item) => `${item.id}:${item.latitude}:${item.longitude}:${item.subCategory}:${item.locationStatus}`)
+      .map((item) => `${item.id}:${item.latitude}:${item.longitude}:${item.subCategory}:${item.locationStatus}:${item.brand}`)
       .sort()
       .join("|"),
     [items],
@@ -132,8 +185,9 @@ function UmkmMapWithMarkers({
   useEffect(() => { onMovingChangeRef.current = onMovingChange; }, [onMovingChange]);
   useEffect(() => { onZoomRadiusChangeRef.current = onZoomRadiusChange; }, [onZoomRadiusChange]);
   useEffect(() => { onUserZoomRef.current = onUserZoom; }, [onUserZoom]);
-  useEffect(() => { hasSelectionRef.current = Boolean(selectedId); }, [selectedId]);
+  useEffect(() => { onReadyRef.current = onReady; }, [onReady]);
   useEffect(() => { markerItemsRef.current = items; }, [items]);
+  useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
   useEffect(() => { themeRef.current = theme; }, [theme]);
 
   useEffect(() => {
@@ -141,35 +195,47 @@ function UmkmMapWithMarkers({
     const markers = markersRef.current;
     const map = new MapLibreMap({
       container: containerRef.current,
-      style: mapStyle,
-      center: [initialCenter.current.longitude, initialCenter.current.latitude],
-      zoom: 14.1,
-      minZoom: 10,
+      style: MAP_STYLE_URL,
+      center: initialView.current
+        ? [initialView.current.longitude, initialView.current.latitude]
+        : [initialCenter.current.longitude, initialCenter.current.latitude],
+      zoom: initialView.current?.zoom ?? 14.1,
+      minZoom: 8,
       maxZoom: 19,
       attributionControl: false,
     });
-    map.addControl(new NavigationControl({ showCompass: false }), "bottom-right");
-    map.addControl(new AttributionControl({ compact: true }), "bottom-left");
+    map.addControl(new AttributionControl({ compact: true }), "top-right");
+    // The attribution stays available behind its "i" button instead of covering the map.
+    // The control opens itself on creation and again on resize, so it is closed at every early moment.
+    const collapseAttribution = () => {
+      const attribution = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
+      attribution?.classList.remove("maplibregl-compact-show");
+      attribution?.removeAttribute("open");
+    };
+    collapseAttribution();
+    map.once("styledata", collapseAttribution);
+    map.once("load", collapseAttribution);
+    map.once("idle", collapseAttribution);
+    onReadyRef.current?.({ zoomIn: () => map.zoomIn(), zoomOut: () => map.zoomOut() });
+
+    const visibleRadiusKm = () => {
+      const bounds = map.getBounds();
+      return Number((Math.abs(bounds.getNorth() - map.getCenter().lat) * 111.32).toFixed(1));
+    };
     const reportViewport = (userInitiated: boolean) => {
       const mapCenter = map.getCenter();
       const bounds = map.getBounds();
-      const currentCenter = { latitude: mapCenter.lat, longitude: mapCenter.lng };
-      const currentBounds = {
-        north: bounds.getNorth(),
-        south: bounds.getSouth(),
-        east: bounds.getEast(),
-        west: bounds.getWest(),
-      };
       onViewportChangeRef.current({
-        center: currentCenter,
-        bounds: currentBounds,
+        center: { latitude: mapCenter.lat, longitude: mapCenter.lng },
+        zoom: map.getZoom(),
+        bounds: {
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        },
       }, userInitiated);
-
-      if (onZoomRadiusChangeRef.current) {
-        // Calculate realtime visible radius: distance from center to northern edge (vertical radius)
-        const latDeltaKm = Math.abs(bounds.getNorth() - mapCenter.lat) * 111.32;
-        onZoomRadiusChangeRef.current(Number(latDeltaKm.toFixed(1)));
-      }
+      onZoomRadiusChangeRef.current?.(visibleRadiusKm());
     };
     let moveThrottleTimeout: ReturnType<typeof setTimeout> | null = null;
     map.on("movestart", () => onMovingChangeRef.current(true));
@@ -184,21 +250,9 @@ function UmkmMapWithMarkers({
     map.on("zoom", (event) => {
       const isUser = Boolean(event.originalEvent);
       reportViewport(isUser);
-      if (isUser && onUserZoomRef.current) {
-        const bounds = map.getBounds();
-        const mapCenter = map.getCenter();
-        const latDeltaKm = Math.abs(bounds.getNorth() - mapCenter.lat) * 111.32;
-        onUserZoomRef.current(Number(latDeltaKm.toFixed(1)));
-      }
+      if (isUser) onUserZoomRef.current?.(visibleRadiusKm());
     });
-    map.on("wheel", () => {
-      if (onUserZoomRef.current) {
-        const bounds = map.getBounds();
-        const mapCenter = map.getCenter();
-        const latDeltaKm = Math.abs(bounds.getNorth() - mapCenter.lat) * 111.32;
-        onUserZoomRef.current(Number(latDeltaKm.toFixed(1)));
-      }
-    });
+    map.on("wheel", () => onUserZoomRef.current?.(visibleRadiusKm()));
     map.on("moveend", (event) => {
       if (moveThrottleTimeout) {
         clearTimeout(moveThrottleTimeout);
@@ -207,19 +261,23 @@ function UmkmMapWithMarkers({
       reportViewport(Boolean(event.originalEvent));
       onMovingChangeRef.current(false);
     });
+    map.on("style.load", () => applyMapPalette(map, themeRef.current));
     map.on("load", () => {
-      const isDark = themeRef.current === "dark";
-      const radiusColor = isDark ? "#f97316" : "#0f766e";
+      const ringColor = getRingColor(themeRef.current);
       map.addSource("radius", { type: "geojson", data: initialCircleData.current });
-      map.addLayer({ id: "radius-fill", type: "fill", source: "radius", paint: { "fill-color": radiusColor, "fill-opacity": isDark ? 0.12 : 0.08 } });
-      map.addLayer({ id: "radius-line", type: "line", source: "radius", paint: { "line-color": radiusColor, "line-width": 2, "line-dasharray": [3, 2] } });
+      map.addLayer({ id: "radius-fill", type: "fill", source: "radius", paint: { "fill-color": ringColor, "fill-opacity": 0.05 } });
+      map.addLayer({
+        id: "radius-line",
+        type: "line",
+        source: "radius",
+        layout: { "line-cap": "round" },
+        paint: { "line-color": ringColor, "line-width": 1.6, "line-dasharray": [0.01, 5.5] },
+      });
       reportViewport(false);
     });
     mapRef.current = map;
     return () => {
-      if (moveThrottleTimeout) {
-        clearTimeout(moveThrottleTimeout);
-      }
+      if (moveThrottleTimeout) clearTimeout(moveThrottleTimeout);
       userMarkerRef.current?.remove();
       userMarkerRef.current = null;
       markers.forEach((marker) => marker.remove());
@@ -233,21 +291,13 @@ function UmkmMapWithMarkers({
     const map = mapRef.current;
     if (!map) return;
     const updateThemeLayers = () => {
-      const isDark = theme === "dark";
-      const radiusColor = isDark ? "#f97316" : "#0f766e";
-      if (map.getLayer("radius-fill")) {
-        map.setPaintProperty("radius-fill", "fill-color", radiusColor);
-        map.setPaintProperty("radius-fill", "fill-opacity", isDark ? 0.12 : 0.08);
-      }
-      if (map.getLayer("radius-line")) {
-        map.setPaintProperty("radius-line", "line-color", radiusColor);
-      }
+      applyMapPalette(map, theme);
+      const ringColor = getRingColor(theme);
+      if (map.getLayer("radius-fill")) map.setPaintProperty("radius-fill", "fill-color", ringColor);
+      if (map.getLayer("radius-line")) map.setPaintProperty("radius-line", "line-color", ringColor);
     };
-    if (map.isStyleLoaded()) {
-      updateThemeLayers();
-    } else {
-      map.once("load", updateThemeLayers);
-    }
+    if (map.isStyleLoaded()) updateThemeLayers();
+    else map.once("load", updateThemeLayers);
   }, [theme]);
 
   useEffect(() => {
@@ -260,9 +310,8 @@ function UmkmMapWithMarkers({
     }
     if (!userMarkerRef.current) {
       const element = document.createElement("div");
-      element.className = "user-live-marker";
+      element.className = "user-dot";
       element.setAttribute("aria-label", "Lokasi Anda saat ini");
-      element.innerHTML = '<span class="user-live-pulse"></span><span class="user-live-dot"></span>';
       userMarkerRef.current = new Marker({ element })
         .setLngLat([userLocation.longitude, userLocation.latitude])
         .addTo(map);
@@ -274,23 +323,39 @@ function UmkmMapWithMarkers({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (fitRequest.zoom !== undefined) {
+    if (fitRequest.skipIfMoving && map.isMoving()) return;
+    const padding = { top: 0, right: 0, bottom: 0, left: 0, ...fitRequest.padding };
+    const duration = fitRequest.instant ? 0 : 700;
+    if (fitRequest.bounds) {
+      const [west, south, east, north] = fitRequest.bounds;
+      map.fitBounds([[west, south], [east, north]], {
+        padding: {
+          top: padding.top + FIT_BOUNDS_PADDING,
+          right: padding.right + FIT_BOUNDS_PADDING,
+          bottom: padding.bottom + FIT_BOUNDS_PADDING,
+          left: padding.left + FIT_BOUNDS_PADDING,
+        },
+        duration,
+        maxZoom: 17,
+      });
+    } else if (fitRequest.zoom !== undefined) {
       map.easeTo({
         center: [fitRequest.center.longitude, fitRequest.center.latitude],
         zoom: fitRequest.zoom,
-        duration: 700,
+        padding,
+        duration,
       });
     } else if (fitRequest.radiusKm === null) {
-      map.easeTo({ center: [fitRequest.center.longitude, fitRequest.center.latitude], duration: 700 });
+      map.easeTo({
+        center: [fitRequest.center.longitude, fitRequest.center.latitude],
+        zoom: fitRequest.minZoom === undefined ? undefined : Math.max(map.getZoom(), fitRequest.minZoom),
+        padding,
+        duration,
+      });
     } else {
-      map.fitBounds(radiusBounds(fitRequest.center, fitRequest.radiusKm), {
-        padding: {
-          top: 0,
-          right: 0,
-          bottom: 0,
-          left: 0,
-        },
-        duration: 700,
+      map.fitBounds(radiusBounds(fitRequest.center, fitRequest.radiusKm * FIT_MARGIN), {
+        padding,
+        duration,
         maxZoom: 18,
       });
     }
@@ -309,27 +374,24 @@ function UmkmMapWithMarkers({
     });
 
     for (const item of markerItems) {
-      const existingMarker = markersRef.current.get(item.id);
-      if (existingMarker) {
-        existingMarker.setLngLat([item.longitude, item.latitude]);
-        continue;
-      }
-      const element = document.createElement("button");
-      element.type = "button";
-      element.className = `umkm-map-marker status-${item.locationStatus}`;
-      element.innerHTML = `<span class="umkm-map-marker-icon">${categoryMarkerSvg(item.subCategory)}</span>`;
-      element.title = `${item.brand} · ${item.subCategory}`;
-      element.setAttribute("aria-label", `Pilih ${item.brand}, kategori ${item.subCategory}`);
+      // Rebuilt on every change so name, category and status always match the data.
+      markersRef.current.get(item.id)?.remove();
+      const element = createMarkerElement(item);
       element.addEventListener("click", (event) => {
         event.stopPropagation();
         onSelectRef.current(item.id);
       });
-      const marker = new Marker({ element, anchor: "bottom" })
+      const marker = new Marker({ element, anchor: "center" })
         .setLngLat([item.longitude, item.latitude])
         .addTo(map);
+      setMarkerSelected(marker, item.id === selectedIdRef.current);
       markersRef.current.set(item.id, marker);
     }
   }, [markerItemsKey]);
+
+  useEffect(() => {
+    markersRef.current.forEach((marker, id) => setMarkerSelected(marker, id === selectedId));
+  }, [selectedId]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -340,17 +402,7 @@ function UmkmMapWithMarkers({
     return () => { map.off("load", updateRadius); };
   }, [circleData]);
 
-  useEffect(() => {
-    markersRef.current.forEach((marker, id) => marker.getElement().classList.toggle("selected", id === selectedId));
-  }, [selectedId]);
-
-  return (
-    <div
-      ref={containerRef}
-      className={`map-canvas ${theme === "dark" ? "map-dark" : ""}`}
-      aria-label="Peta lokasi UMKM"
-    />
-  );
+  return <div ref={containerRef} className="map-canvas" aria-label="Peta lokasi UMKM" />;
 }
 
 export const UmkmMap = UmkmMapWithMarkers;

@@ -2,88 +2,158 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
-  ArrowUpRight,
-  BadgeCheck,
-  CircleAlert,
   Clock,
-  ExternalLink,
+  Columns2,
   Globe,
-  ImageIcon,
   MapPin,
-  PackageOpen,
+  Navigation,
+  Package,
   Phone,
-  Store,
+  TriangleAlert,
+  ChevronRight,
 } from "lucide-react";
-import { CategoryIcon, CATEGORY_CONFIG } from "@/features/umkm/categories";
-import { PhotoGallery } from "@/features/umkm/components/photo-gallery";
+import { Rail } from "@/components/rail";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { getUmkm } from "@/data/umkm-repository";
+import { PhotoGallery } from "@/features/umkm/components/photo-gallery";
+import { LocationMap } from "@/features/umkm/components/location-map";
+import { ShareButton } from "@/features/umkm/components/share-button";
+import { StatusBadge } from "@/features/umkm/components/status-badge";
+import {
+  directionsUrl,
+  displayText,
+  externalUrl,
+  formatCoordinates,
+  formatOperatingHours,
+  villageName,
+  whatsappUrl,
+} from "@/features/umkm/format";
+
+export async function generateMetadata({ params }: PageProps<"/umkm/[id]">) {
+  const item = await getUmkm((await params).id);
+  return { title: item ? displayText(item.brand) : "UMKM tidak ditemukan" };
+}
+
+function InfoItem({ icon: Icon, label, children }: { icon: typeof Clock; label: string; children: React.ReactNode }) {
+  return (
+    <div className="irow">
+      <Icon className="i" />
+      <div style={{ minWidth: 0 }}>
+        <div className="mut" style={{ fontSize: 13 }}>{label}</div>
+        <div className="fw5" style={{ marginTop: 2 }}>{children}</div>
+      </div>
+    </div>
+  );
+}
 
 export default async function UmkmDetailPage({ params }: PageProps<"/umkm/[id]">) {
   const { id } = await params;
   const item = await getUmkm(id);
   if (!item) notFound();
-  const isVerified = item.locationStatus === "verified";
 
-  const openTrim = (item.openingHours || "").trim();
-  const closeTrim = (item.closingHours || "").trim();
-  const is24Hours = Boolean(openTrim && closeTrim && openTrim === closeTrim);
-  const operatingHoursText = is24Hours
-    ? "Buka 24 Jam"
-    : openTrim || closeTrim
-    ? `Buka: ${openTrim || "00:00"} - ${closeTrim || "24:00"} WIB`
-    : null;
+  const brand = displayText(item.brand);
+  const village = villageName(item.address);
+  const owner = displayText(item.ownerName);
+  const hours = formatOperatingHours(item.openingHours, item.closingHours);
+  const isVerified = item.locationStatus === "verified";
+  const sharePath = `/umkm/${item.id}`;
+  const shareText = `${brand} · ${displayText(item.products, "sentence")} (Banjarsari, Garut)`;
 
   return (
-    <main className="detail-shell"><div className="detail-page">
-      <Link href="/" className="back-link"><ArrowLeft size={18} /> Kembali ke peta</Link>
-      <article className="detail-card">
-        <div className="detail-hero">
-          <div className="detail-hero-top"><span>UMKM Banjarsari</span><span>{item.category}</span></div>
-          <span className="detail-category-icon" style={{ color: CATEGORY_CONFIG[item.subCategory].color }}><CategoryIcon category={item.subCategory} size={92} /></span>
-          <div className="detail-hero-caption"><small>Kategori usaha</small><strong>{item.subCategory}</strong></div>
+    <div className="app page-min-h" style={{ position: "relative" }}>
+      <Rail
+        items={[
+          { label: "Peta", icon: "map", href: "/", active: true },
+          { label: "Daftar", icon: "list", href: "/" },
+          { label: "Tentang", icon: "info", href: "/" },
+        ]}
+        footerItems={[{ label: "Admin", icon: "shield", href: "/admin" }]}
+      />
+
+      <div className="app-body page-min-h" style={{ marginLeft: 56 }}>
+        <div className="top only-desktop">
+          <span className="fw5">Profil UMKM</span>
         </div>
-        <div className="detail-body">
-          <div className="detail-kicker"><Store size={15} /> Profil usaha</div>
-          <div className="detail-title-row"><div><h1>{item.brand}</h1><p className="detail-owner">Dikelola oleh {item.ownerName}</p></div>{isVerified && <span className="detail-verified"><BadgeCheck size={15} /> Terverifikasi</span>}</div>
+        <div className="top only-mobile" style={{ padding: "0 8px", gap: 4 }}>
+          <Link className="btn ic g" href="/" aria-label="Kembali" title="Kembali"><ArrowLeft className="i" /></Link>
+          <span className="fw5 ell" style={{ flex: 1 }}>{brand}</span>
+          <ShareButton title={brand} text={shareText} path={sharePath} className="btn ic g" iconOnly />
+          <ThemeToggle />
+        </div>
 
-          {item.photos && item.photos.length > 0 && (
-            <PhotoGallery photos={item.photos} title={item.brand} />
-          )}
-
-          <div className="detail-primary-info">
-            {operatingHoursText && (
-              <section>
-                <h2><Clock size={15} /> Jam Operasional</h2>
-                <p><strong style={{ color: is24Hours ? "#059669" : "inherit" }}>{operatingHoursText}</strong></p>
-              </section>
-            )}
-            {item.contact && (
-              <section>
-                <h2><Phone size={15} /> Kontak / WhatsApp</h2>
-                <p>
-                  <a href={`https://wa.me/${item.contact.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="detail-contact-link">
-                    {item.contact} <ExternalLink size={12} />
-                  </a>
-                </p>
-              </section>
-            )}
-            {item.website && (
-              <section>
-                <h2><Globe size={15} /> Website / Media Sosial</h2>
-                <p>
-                  <a href={item.website.startsWith("http") ? item.website : `https://${item.website}`} target="_blank" rel="noreferrer" className="detail-contact-link">
-                    {item.website.replace(/^https?:\/\//, "")} <ExternalLink size={12} />
-                  </a>
-                </p>
-              </section>
-            )}
-            <section><h2><PackageOpen size={15} /> Produk unggulan</h2><p>{item.products}</p></section>
-            <section><h2><MapPin size={15} /> Lokasi usaha</h2><p className={`detail-address${item.address ? "" : " empty"}`}>{item.address || "Alamat belum dicantumkan"}</p></section>
+        <div className="pf-wrap">
+          <div className="mut only-desktop" style={{ gap: 8, alignItems: "center" }}>
+            <Link href="/">Peta</Link>
+            <ChevronRight className="i sm" />
+            <span style={{ color: "var(--fg)" }}>{brand}</span>
           </div>
-          {!isVerified && <div className="detail-warning"><CircleAlert size={17} /><p><strong>Lokasi masih perkiraan</strong>Gunakan peta sebagai petunjuk area, bukan navigasi presisi.</p></div>}
-          <div className="detail-actions"><Link href={`/?selected=${item.id}`} className="primary-button">Lihat lokasi di peta <ArrowUpRight size={15} /></Link><span>Data usaha lokal Banjarsari</span></div>
+
+          <div className="pf-head">
+            <div style={{ flex: 1, minWidth: 280 }}>
+              <h1 className="pf-title">{brand}</h1>
+              <div className="pf-badges">
+                <span className="bdg sec">{item.subCategory}</span>
+                <StatusBadge status={item.locationStatus} />
+                <span className="mut pf-sub">{village} · {owner}</span>
+              </div>
+            </div>
+            <div className="pf-actions">
+              <a className="btn" href={directionsUrl(item)} target="_blank" rel="noreferrer"><Navigation className="i" />Rute</a>
+              <Link className="btn o" href={`/bandingkan?a=${item.id}`}><Columns2 className="i" />Bandingkan</Link>
+              <ShareButton title={brand} text={shareText} path={sharePath} />
+            </div>
+          </div>
+
+          <div className="pf-cols">
+            <div className="pf-main">
+              <div className="pf-gallery">
+                <PhotoGallery photos={item.photos ?? []} title={brand} variant="profile" />
+              </div>
+              <div className="card pf-card pf-products">
+                <div className="fw6" style={{ fontSize: 16, lineHeight: "16px" }}>Produk</div>
+                <div style={{ display: "flex", gap: 12, alignItems: "center", padding: 12, border: "1px solid var(--bd)", borderRadius: "var(--r)" }}>
+                  <Package className="i" />
+                  <span>{displayText(item.products, "sentence") || "Produk belum dicantumkan"}</span>
+                </div>
+              </div>
+            </div>
+            <div className="pf-side">
+              <div className="card pf-card pf-location">
+                <div className="fw6" style={{ fontSize: 16, lineHeight: "16px" }}>Lokasi</div>
+                <LocationMap item={item} />
+                <div style={{ display: "flex", gap: 10 }}>
+                  <MapPin className="i" />
+                  <span>{item.address ? displayText(item.address) : "Alamat belum dicantumkan"}</span>
+                </div>
+                {!isVerified && (
+                  <div className="alert">
+                    <TriangleAlert className="i" style={{ color: "var(--wnf)" }} />
+                    <div>
+                      <b>Lokasi perkiraan</b>
+                      <span>Gunakan sebagai petunjuk area.</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="card pf-card pf-info">
+                <div className="fw6" style={{ fontSize: 16, lineHeight: "16px", marginBottom: 8 }}>Informasi</div>
+                {hours && <InfoItem icon={Clock} label="Jam buka">{hours}</InfoItem>}
+                {item.contact && (
+                  <InfoItem icon={Phone} label="WhatsApp">
+                    <a href={whatsappUrl(item.contact)} target="_blank" rel="noreferrer">{item.contact}</a>
+                  </InfoItem>
+                )}
+                {item.website && (
+                  <InfoItem icon={Globe} label="Media sosial">
+                    <a href={externalUrl(item.website)} target="_blank" rel="noreferrer">{item.website.replace(/^https?:\/\//, "")}</a>
+                  </InfoItem>
+                )}
+                <InfoItem icon={MapPin} label="Koordinat"><span className="mono">{formatCoordinates(item.latitude, item.longitude)}</span></InfoItem>
+              </div>
+            </div>
+          </div>
         </div>
-      </article>
-    </div></main>
+      </div>
+    </div>
   );
 }

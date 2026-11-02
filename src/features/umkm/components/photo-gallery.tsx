@@ -3,172 +3,142 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, ImageIcon, X } from "lucide-react";
 
+type GalleryVariant = "panel" | "profile";
+
 interface PhotoGalleryProps {
   photos: string[];
   title: string;
+  variant: GalleryVariant;
 }
 
-export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+const SLOT_COUNT: Record<GalleryVariant, number> = { panel: 3, profile: 5 };
 
-  const isOpen = lightboxIndex !== null;
-  const count = photos.length;
+function PhotoTile({
+  photo,
+  title,
+  index,
+  className,
+  style,
+  onOpen,
+}: {
+  photo?: string;
+  title: string;
+  index: number;
+  className: string;
+  style: React.CSSProperties;
+  onOpen: (index: number) => void;
+}) {
+  if (!photo) {
+    return (
+      <div className={className} style={style} aria-hidden="true">
+        <ImageIcon className="i lg" />
+      </div>
+    );
+  }
 
-  const handlePrev = useCallback(() => {
-    setLightboxIndex((curr) => {
-      if (curr === null) return null;
-      return (curr - 1 + count) % count;
-    });
-  }, [count]);
+  return (
+    <button
+      type="button"
+      className={className}
+      style={{ ...style, cursor: "zoom-in" }}
+      onClick={() => onOpen(index)}
+      aria-label={`Lihat foto ${index + 1} ${title}`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={photo} alt={`${title}, foto ${index + 1}`} loading="lazy" />
+    </button>
+  );
+}
 
-  const handleNext = useCallback(() => {
-    setLightboxIndex((curr) => {
-      if (curr === null) return null;
-      return (curr + 1) % count;
-    });
-  }, [count]);
+function Lightbox({
+  photos,
+  title,
+  index,
+  onChange,
+  onClose,
+}: {
+  photos: string[];
+  title: string;
+  index: number;
+  onChange: (index: number) => void;
+  onClose: () => void;
+}) {
+  const move = useCallback(
+    (step: number) => onChange((index + step + photos.length) % photos.length),
+    [index, onChange, photos.length],
+  );
 
-  const handleClose = useCallback(() => {
-    setLightboxIndex(null);
-  }, []);
-
-  // Keyboard navigation
   useEffect(() => {
-    if (!isOpen) return;
-
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") handleClose();
-      else if (e.key === "ArrowLeft") handlePrev();
-      else if (e.key === "ArrowRight") handleNext();
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+      if (event.key === "ArrowLeft") move(-1);
+      if (event.key === "ArrowRight") move(1);
     }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [move, onClose]);
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, handleClose, handlePrev, handleNext]);
+  return (
+    <div
+      className="dlg-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Foto ${title}`}
+      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
+    >
+      <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 12, alignItems: "center", maxWidth: "min(960px, 100%)" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photos[index]}
+          alt={`${title}, foto ${index + 1}`}
+          style={{ maxWidth: "100%", maxHeight: "78vh", borderRadius: "var(--rl)", objectFit: "contain", background: "var(--card)" }}
+        />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {photos.length > 1 && (
+            <button type="button" className="btn ic o" onClick={() => move(-1)} aria-label="Foto sebelumnya">
+              <ChevronLeft className="i" />
+            </button>
+          )}
+          <span className="fcard fw6" style={{ padding: "0 12px", height: 36, display: "inline-flex", alignItems: "center", fontSize: 13 }}>
+            {index + 1} / {photos.length}
+          </span>
+          {photos.length > 1 && (
+            <button type="button" className="btn ic o" onClick={() => move(1)} aria-label="Foto berikutnya">
+              <ChevronRight className="i" />
+            </button>
+          )}
+          <button type="button" className="btn ic o" onClick={onClose} aria-label="Tutup foto">
+            <X className="i" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  // Touch swipe support for mobile
-  function handleTouchStart(e: React.TouchEvent) {
-    setTouchStartX(e.touches[0].clientX);
-  }
-
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStartX === null) return;
-    const touchEndX = e.changedTouches[0].clientX;
-    const diff = touchStartX - touchEndX;
-    if (Math.abs(diff) > 45) {
-      if (diff > 0) handleNext();
-      else handlePrev();
-    }
-    setTouchStartX(null);
-  }
-
-  if (!photos || photos.length === 0) return null;
+/** Photo grid of the panel (3 tiles) and the profile page (1 large + 4 tiles) with a lightbox. */
+export function PhotoGallery({ photos, title, variant }: PhotoGalleryProps) {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const tiles = Array.from({ length: SLOT_COUNT[variant] }, (_, index) => photos[index]);
+  const closeLightbox = useCallback(() => setOpenIndex(null), []);
 
   return (
     <>
-      <div className="detail-photos-section">
-        <div className="detail-photos-header">
-          <ImageIcon size={14} />
-          <span>Galeri Foto ({photos.length})</span>
-          <small className="gallery-click-hint">Klik foto untuk memperbesar</small>
-        </div>
-        <div className="detail-photos-grid">
-          {photos.map((photoUrl, idx) => (
-            <button
-              key={idx}
-              type="button"
-              className="detail-photo-thumb"
-              onClick={() => setLightboxIndex(idx)}
-              title={`Perbesar foto ${idx + 1} dari ${photos.length}`}
-              aria-label={`Buka foto ${idx + 1}`}
-            >
-              <img src={photoUrl} alt={`${title} foto ${idx + 1}`} loading="lazy" />
-              <span className="photo-thumb-zoom-badge">{idx + 1}</span>
-            </button>
+      {variant === "panel" ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 8 }}>
+          {tiles.map((photo, index) => (
+            <PhotoTile key={index} photo={photo} title={title} index={index} className="ph" style={{ height: 80 }} onOpen={setOpenIndex} />
           ))}
         </div>
-      </div>
-
-      {isOpen && (
-        <div
-          className="lightbox-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Galeri foto ${title}`}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) handleClose();
-          }}
-        >
-          <div className="lightbox-container" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-            <header className="lightbox-topbar">
-              <div className="lightbox-caption">
-                <strong>{title}</strong>
-                <span>Foto {lightboxIndex + 1} dari {count}</span>
-              </div>
-              <button
-                type="button"
-                className="lightbox-close-btn"
-                onClick={handleClose}
-                aria-label="Tutup foto"
-                title="Tutup (Esc)"
-              >
-                <X size={20} />
-              </button>
-            </header>
-
-            <div className="lightbox-viewport">
-              {count > 1 && (
-                <button
-                  type="button"
-                  className="lightbox-nav-btn prev"
-                  onClick={handlePrev}
-                  aria-label="Foto sebelumnya"
-                  title="Sebelumnya (Panah kiri)"
-                >
-                  <ChevronLeft size={24} />
-                </button>
-              )}
-
-              <div className="lightbox-image-wrapper">
-                <img
-                  key={lightboxIndex}
-                  src={photos[lightboxIndex]}
-                  alt={`${title} - foto ${lightboxIndex + 1}`}
-                  className="lightbox-current-image"
-                />
-              </div>
-
-              {count > 1 && (
-                <button
-                  type="button"
-                  className="lightbox-nav-btn next"
-                  onClick={handleNext}
-                  aria-label="Foto berikutnya"
-                  title="Berikutnya (Panah kanan)"
-                >
-                  <ChevronRight size={24} />
-                </button>
-              )}
-            </div>
-
-            {count > 1 && (
-              <div className="lightbox-thumbnails-row">
-                {photos.map((url, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    className={`lightbox-strip-thumb ${idx === lightboxIndex ? "active" : ""}`}
-                    onClick={() => setLightboxIndex(idx)}
-                    aria-label={`Pilih foto ${idx + 1}`}
-                  >
-                    <img src={url} alt="" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+      ) : (
+        <div className="pg">
+          {tiles.map((photo, index) => (
+            <PhotoTile key={index} photo={photo} title={title} index={index} className={`ph pg-tile${index === 0 ? " pg-main" : ""}`} style={{}} onOpen={setOpenIndex} />
+          ))}
         </div>
+      )}
+      {openIndex !== null && (
+        <Lightbox photos={photos} title={title} index={openIndex} onChange={setOpenIndex} onClose={closeLightbox} />
       )}
     </>
   );

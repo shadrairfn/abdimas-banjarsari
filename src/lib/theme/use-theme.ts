@@ -3,6 +3,7 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 export type Theme = "light" | "dark";
 
 const THEME_STORAGE_KEY = "app_theme";
+const SERVER_THEME: Theme = "light";
 const themeListeners = new Set<() => void>();
 
 function subscribeToTheme(listener: () => void) {
@@ -37,7 +38,7 @@ function saveTheme(theme: Theme) {
 /** Light/dark theme stored in localStorage and mirrored to the `dark` class on <html>. */
 export function useTheme() {
   // The server cannot know the visitor's theme, so it renders "light" and the client corrects it.
-  const theme = useSyncExternalStore<Theme>(subscribeToTheme, readTheme, () => "light");
+  const theme = useSyncExternalStore<Theme>(subscribeToTheme, readTheme, () => SERVER_THEME);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
