@@ -90,7 +90,7 @@ export default async function UmkmDetailPage({ params }: PageProps<"/umkm/[id]">
           <span className="fw5">Profil UMKM</span>
         </div>
         <div className="top only-mobile" style={{ padding: "0 8px", gap: 4 }}>
-          <Link className="btn ic g" href="/" aria-label="Kembali" title="Kembali">
+          <Link className="btn ic g" href="/" aria-label="Kembali ke peta" title="Kembali ke peta">
             <ArrowLeft className="i" />
           </Link>
           <span className="fw5 ell" style={{ flex: 1 }}>
@@ -107,10 +107,16 @@ export default async function UmkmDetailPage({ params }: PageProps<"/umkm/[id]">
         </div>
 
         <div className="pf-wrap">
-          <div className="mut only-desktop" style={{ gap: 8, alignItems: "center" }}>
-            <Link href="/">Peta</Link>
-            <ChevronRight className="i sm" />
-            <span style={{ color: "var(--fg)" }}>{brand}</span>
+          <div className="pf-navigation">
+            <nav className="pf-breadcrumb only-desktop" aria-label="Breadcrumb">
+              <Link href="/">Peta</Link>
+              <ChevronRight className="i sm" aria-hidden="true" />
+              <span aria-current="page">{brand}</span>
+            </nav>
+            <Link className="btn o sm" href="/">
+              <ArrowLeft className="i sm" />
+              Kembali ke peta
+            </Link>
           </div>
 
           <div className="pf-head">

@@ -745,3 +745,30 @@ html[data-rail-expanded="true"] {
     height: 44px;
   }
 }
+.pf-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.pf-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--mfg);
+}
+.pf-breadcrumb .i {
+  flex: none;
+}
+.pf-breadcrumb [aria-current="page"] {
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 767px) {
+  .pf-navigation {
+    order: -1;
+    padding: 16px 16px 0;
+  }
+}
