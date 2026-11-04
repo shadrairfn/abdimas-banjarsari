@@ -3,12 +3,16 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
+import "./workspace.css";
+import { listCategories } from "@/data/category-repository";
+import { CategoryProvider } from "@/features/categories/category-provider";
+import { NavigationMemory } from "@/components/navigation-memory";
 
 const geist = Geist({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-geist" });
 const geistMono = Geist_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-geist-mono" });
 
 // Runs before the first paint so a saved dark theme does not flash white.
-const THEME_SCRIPT = `try{var t=localStorage.getItem("app_theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}`;
+const THEME_SCRIPT = `try{var t=localStorage.getItem("app_theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark");document.documentElement.dataset.railExpanded=String(localStorage.getItem("rail_expanded_v2")!=="false")}catch(e){}`;
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -29,13 +33,14 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const categories = await listCategories();
   return (
     <html lang="id" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body><CategoryProvider initialCategories={categories}><NavigationMemory />{children}</CategoryProvider></body>
     </html>
   );
 }

@@ -3,10 +3,13 @@ import { ApiResponse } from "@/lib/http/api-response";
 import { createSupabaseAdminClient, isServiceRoleConfigured } from "@/lib/supabase/admin-client";
 
 export interface AdminUser {
-  userId: string;
+  id: string;
+  userId: string | null;
   email: string;
   fullName: string;
   isActive: boolean;
+  role: "superadmin" | "admin";
+  googleLoginAllowed: boolean;
   createdAt?: string;
 }
 
@@ -23,7 +26,7 @@ export async function listAdmins(): Promise<AdminUser[]> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("admins")
-    .select("user_id, email, full_name, is_active, created_at")
+    .select("id, user_id, email, full_name, is_active, role, google_login_allowed, created_at")
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -31,10 +34,13 @@ export async function listAdmins(): Promise<AdminUser[]> {
   }
 
   return data.map((row) => ({
+    id: row.id,
     userId: row.user_id,
     email: row.email,
     fullName: row.full_name,
     isActive: row.is_active,
+    role: row.role,
+    googleLoginAllowed: row.google_login_allowed,
     createdAt: row.created_at,
   }));
 }

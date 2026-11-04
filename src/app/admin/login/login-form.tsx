@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { signInAction } from "@/app/admin/actions";
 import type { ActionState } from "@/lib/http/run-action";
@@ -39,6 +40,7 @@ export function LoginForm() {
           />
         </label>
       </div>
+      <Link href="/admin/lupa-password" style={{ alignSelf: "flex-end", textDecoration: "underline", textUnderlineOffset: 4 }}>Lupa kata sandi?</Link>
       {state.message && (
         <div className="alert alert-err" role="alert">
           <span style={{ color: "var(--des)" }}>{state.message}</span>

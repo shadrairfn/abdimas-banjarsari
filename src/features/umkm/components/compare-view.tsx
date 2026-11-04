@@ -3,19 +3,20 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowLeft, ArrowLeftRight, Check, ExternalLink, Navigation, Plus, RefreshCw, Search, X } from "lucide-react";
-import { Dialog } from "@/components/dialog";
+import { ArrowLeft, ArrowLeftRight, Check, Columns2, ExternalLink, Navigation, Plus, RefreshCw, X } from "lucide-react";
+import { ComparePickerDialog } from "./compare-picker-dialog";
 import { Rail } from "@/components/rail";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CategoryIcon } from "@/features/umkm/categories";
 import { compareHref, saveCompareIds } from "@/features/umkm/compare";
 import { LocationMap } from "@/features/umkm/components/location-map";
 import { PhotoGallery } from "@/features/umkm/components/photo-gallery";
-import { StatusBadge } from "@/features/umkm/components/status-badge";
 import {
-  directionsUrl,
   displayText,
-  externalUrl,
+  socialLabel,
+  socialUrl,
+  socialPlatformLabel,
+  socialsText,
   formatCoordinates,
   formatDistance,
   formatOperatingHours,
@@ -24,6 +25,9 @@ import {
 } from "@/features/umkm/format";
 import type { Umkm } from "@/features/umkm/types";
 import { distanceKm } from "@/lib/geo";
+import { ProductCatalog } from "./product-catalog";
+import { catalogOf, catalogText } from "@/features/umkm/catalog";
+import { ActivityPing } from "@/features/activity/components/activity-ping";
 
 interface CompareViewProps {
   items: Umkm[];
@@ -39,7 +43,7 @@ interface CompareRow {
 }
 
 const EMPTY_VALUE = "—";
-const PICKER_LIMIT = 60;
+
 
 function Empty() {
   return <span className="mut">{EMPTY_VALUE}</span>;
@@ -50,21 +54,13 @@ function textOrEmpty(value: string) {
 }
 
 const ROWS: CompareRow[] = [
+  { label: "Katalog & harga", render: item => <ProductCatalog item={item} compact />, text: item => catalogText(catalogOf(item)) },
+  { label: "Produk unggulan", render: item => textOrEmpty(item.featuredProduct ?? ""), text: item => item.featuredProduct ?? "" },
   {
     label: "Foto",
     render: (item) => <PhotoGallery photos={item.photos ?? []} title={displayText(item.brand)} variant="panel" />,
   },
   { label: "Kategori", render: (item) => item.subCategory, text: (item) => item.subCategory },
-  {
-    label: "Status titik",
-    render: (item) => <StatusBadge status={item.locationStatus} />,
-    text: (item) => item.locationStatus,
-  },
-  {
-    label: "Pemilik",
-    render: (item) => textOrEmpty(displayText(item.ownerName)),
-    text: (item) => displayText(item.ownerName),
-  },
   {
     label: "Produk",
     render: (item) => textOrEmpty(displayText(item.products, "sentence")),
@@ -84,10 +80,15 @@ const ROWS: CompareRow[] = [
   },
   {
     label: "Media sosial",
-    render: (item) => item.website
-      ? <a href={externalUrl(item.website)} target="_blank" rel="noreferrer">{item.website.replace(/^https?:\/\//, "")}</a>
+    render: (item) => item.socials.length > 0
+      ? item.socials.map((link) => (
+        <div key={`${link.platform}-${link.handle}`}>
+          <a href={socialUrl(link)} target="_blank" rel="noreferrer">{socialLabel(link)}</a>
+          <span className="mut"> · {socialPlatformLabel(link)}</span>
+        </div>
+      ))
       : <Empty />,
-    text: (item) => item.website ?? "",
+    text: (item) => socialsText(item.socials),
   },
   {
     label: "Alamat",
@@ -97,7 +98,7 @@ const ROWS: CompareRow[] = [
         <div className="mut" style={{ fontSize: 13, marginTop: 2 }}>{villageName(item.address)}</div>
       </>
     ),
-    text: (item) => villageName(item.address),
+    text: (item) => item.address,
   },
   { label: "Lokasi", render: (item) => <LocationMap item={item} /> },
   {
@@ -143,7 +144,7 @@ function SlotHeader({
         </div>
         <div className="cmp-actions">
           <Link className="btn o sm" href={`/umkm/${item.id}`}><ExternalLink className="i sm" />Profil</Link>
-          <a className="btn sm" href={directionsUrl(item)} target="_blank" rel="noreferrer"><Navigation className="i sm" />Rute</a>
+          <Link className="btn sm" href={`/rute/${item.id}`}><Navigation className="i sm" />Rute</Link>
           <button type="button" className="btn g sm cmp-swap" onClick={onPick}><RefreshCw className="i sm" />Ganti</button>
         </div>
       </div>
@@ -151,62 +152,10 @@ function SlotHeader({
   );
 }
 
-function PickerDialog({
-  items,
-  excludeId,
-  onPick,
-  onClose,
-}: {
-  items: Umkm[];
-  excludeId?: string;
-  onPick: (item: Umkm) => void;
-  onClose: () => void;
-}) {
-  const [query, setQuery] = useState("");
-  const normalizedQuery = query.trim().toLocaleLowerCase("id-ID");
-  const matches = items
-    .filter((item) => item.id !== excludeId)
-    .filter((item) => {
-      if (!normalizedQuery) return true;
-      const text = `${item.brand} ${item.ownerName} ${item.products} ${item.subCategory} ${villageName(item.address)}`;
-
-      return normalizedQuery.split(/\s+/).every((word) => text.toLocaleLowerCase("id-ID").includes(word));
-    });
-
-  return (
-    <Dialog open onClose={onClose} width={480} labelledBy="picker-title">
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <h2 id="picker-title">Pilih UMKM</h2>
-        <p>{matches.length} usaha tersedia.</p>
-      </div>
-      <label className="inp">
-        <Search className="i" />
-        <input autoFocus placeholder="Cari nama, produk, atau kampung" aria-label="Cari UMKM" value={query} onChange={(event) => setQuery(event.target.value)} />
-      </label>
-      <div className="cmp-pick-list">
-        {matches.slice(0, PICKER_LIMIT).map((item) => (
-          <button key={item.id} type="button" className="menu-row" onClick={() => onPick(item)}>
-            <span className="sq"><CategoryIcon category={item.subCategory} /></span>
-            <span style={{ minWidth: 0, flex: 1, textAlign: "left" }}>
-              <span className="ell fw5" style={{ display: "block" }}>{displayText(item.brand)}</span>
-              <span className="mut ell" style={{ display: "block", fontSize: 13 }}>{item.subCategory} · {villageName(item.address)}</span>
-            </span>
-          </button>
-        ))}
-        {matches.length === 0 && <p style={{ padding: 8 }}>Tidak ada UMKM yang cocok.</p>}
-        {matches.length > PICKER_LIMIT && <p style={{ padding: 8, fontSize: 13 }}>Persempit pencarian untuk melihat yang lain.</p>}
-      </div>
-      <div className="ft">
-        <button type="button" className="btn o" onClick={onClose}>Batal</button>
-      </div>
-    </Dialog>
-  );
-}
-
 /** Two UMKM profiles side by side, row by row, with the differences highlighted. */
 export function CompareView({ items, firstId, secondId }: CompareViewProps) {
   const router = useRouter();
-  const [pickerSlot, setPickerSlot] = useState<0 | 1 | null>(null);
+  const [pickerSlot, setPickerSlot] = useState<0 | 1 | null>(firstId && !secondId ? 1 : null);
   const [onlyDifferences, setOnlyDifferences] = useState(false);
 
   const first = items.find((item) => item.id === firstId);
@@ -247,6 +196,7 @@ export function CompareView({ items, firstId, secondId }: CompareViewProps) {
 
   return (
     <div className="app page-min-h" style={{ position: "relative" }}>
+      <ActivityPing label="Bandingkan UMKM" />
       <Rail
         items={[
           { label: "Peta", icon: "map", href: "/" },
@@ -286,6 +236,7 @@ export function CompareView({ items, firstId, secondId }: CompareViewProps) {
             </div>
           )}
 
+          {!bothChosen && <div className="alert compare-guide" role="status"><Columns2 className="i" /><div><b>{first ? "Langkah 2: pilih usaha kedua" : "Langkah 1: pilih usaha pertama"}</b><span>{first ? `${displayText(first.brand)} sudah dipilih. Pilih usaha lain untuk melihat perbandingan.` : "Pilih dua usaha untuk membandingkan produk, harga, dan lokasi."}</span></div><button className="btn sm" onClick={() => setPickerSlot(first ? 1 : 0)}>Pilih usaha</button></div>}
           <div className="cmp-grid">
             <div className="only-desktop" />
             <SlotHeader item={first} onPick={() => setPickerSlot(0)} onClear={() => clear(0)} />
@@ -295,7 +246,7 @@ export function CompareView({ items, firstId, secondId }: CompareViewProps) {
               const isDifferent = Boolean(row.text && first && second && row.text(first) !== row.text(second));
 
               return (
-                <div key={row.label} className={`cmp-row${isDifferent ? " diff" : ""}`}>
+                <div key={row.label} className={`cmp-row${isDifferent ? " cmp-row-different" : ""}`}>
                   <div className="cmp-label">{row.label}</div>
                   {slots.map((item, index) => (
                     <div key={item?.id ?? `empty-${index}`} className="cmp-cell">
@@ -313,7 +264,7 @@ export function CompareView({ items, firstId, secondId }: CompareViewProps) {
       </div>
 
       {pickerSlot !== null && (
-        <PickerDialog
+        <ComparePickerDialog
           items={items}
           excludeId={slots[pickerSlot === 0 ? 1 : 0]?.id}
           onPick={pick}

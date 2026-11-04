@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
 export interface SelectOption<Value extends string> {
@@ -16,6 +16,9 @@ interface SelectMenuProps<Value extends string> {
   width?: number | string;
   // Text shown on the button when it differs from the option label (for example "≤ 1 km").
   display?: string;
+  // Replaces the input-like button with a small inline trigger, for example a badge inside a table row.
+  trigger?: ReactNode;
+  disabled?: boolean;
 }
 
 /** The `.inp.sel` dropdown of the design with a small menu below it. */
@@ -26,6 +29,8 @@ export function SelectMenu<Value extends string>({
   ariaLabel,
   width,
   display,
+  trigger,
+  disabled,
 }: SelectMenuProps<Value>) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -37,7 +42,11 @@ export function SelectMenu<Value extends string>({
       if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
     }
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        setOpen(false);
+        containerRef.current?.querySelector<HTMLButtonElement>('button[aria-haspopup="listbox"]')?.focus();
+      }
     }
     document.addEventListener("mousedown", closeOnOutsideClick);
     document.addEventListener("keydown", closeOnEscape);
@@ -51,15 +60,16 @@ export function SelectMenu<Value extends string>({
     <div className="dd" ref={containerRef} style={{ width }}>
       <button
         type="button"
-        className="inp sel"
-        style={{ width: "100%" }}
+        className={trigger ? "inline-trigger" : "inp sel"}
+        style={trigger ? undefined : { width: "100%" }}
+        disabled={disabled}
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((previous) => !previous)}
       >
-        <span>{display ?? current?.label}</span>
-        <ChevronDown className="i sm" />
+        {trigger ?? <span>{display ?? current?.label}</span>}
+        <ChevronDown className={trigger ? "i xs" : "i sm"} />
       </button>
       {open && (
         <div className="menu" role="listbox" aria-label={ariaLabel}>

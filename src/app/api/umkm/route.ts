@@ -32,12 +32,10 @@ export const GET = asyncHandler(async (request: NextRequest) => {
     radiusKm: readNumberParam(searchParams, "radius"),
   });
 
-  const hasOnlyVerifiedLocations = items.every((item) => item.locationStatus === "verified");
 
   const responseData = {
     items,
     total: items.length,
-    locationAccuracy: hasOnlyVerifiedLocations ? "verified" : "mixed",
   };
 
   return sendSuccess(new SuccessResponse(200, "Data UMKM berhasil dimuat.", responseData));

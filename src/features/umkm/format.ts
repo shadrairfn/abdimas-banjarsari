@@ -1,4 +1,4 @@
-import type { Umkm } from "@/features/umkm/types";
+import type { SocialLink, SocialPlatform, Umkm } from "@/features/umkm/types";
 
 const EN_DASH = "–";
 
@@ -63,3 +63,31 @@ export function whatsappUrl(contact: string) {
 export function externalUrl(website: string) {
   return website.startsWith("http") ? website : `https://${website}`;
 }
+
+const SOCIAL_BASE_URLS: Partial<Record<SocialPlatform, string>> = {
+  Instagram: "https://instagram.com/",
+  TikTok: "https://www.tiktok.com/@",
+  Facebook: "https://facebook.com/",
+  YouTube: "https://www.youtube.com/@",
+};
+
+/** Link of one social account: "@warungbuani" on Instagram opens instagram.com/warungbuani. */
+export function socialUrl(link: SocialLink) {
+  const handle = link.handle.trim();
+  if (handle.startsWith("http")) return handle;
+
+  const base = SOCIAL_BASE_URLS[link.platform];
+  return base ? `${base}${handle.replace(/^@/, "")}` : externalUrl(handle);
+}
+
+/** The text shown for a social account, without the protocol. */
+export function socialLabel(link: SocialLink) {
+  return link.handle.trim().replace(/^https?:\/\//, "");
+}
+
+/** "Instagram @warungbuani, TikTok @warungbuani.id" for plain-text uses such as comparing. */
+export function socialsText(socials: SocialLink[]) {
+  return socials.map((link) => `${socialPlatformLabel(link)} ${socialLabel(link)}`).join(", ");
+}
+
+export function socialPlatformLabel(link: SocialLink) { return link.platform === "Lainnya" ? link.customName || "Lainnya" : link.platform; }

@@ -1,7 +1,7 @@
-import { CakeSlice, CookingPot, Cookie, CupSoda, type LucideIcon } from "lucide-react";
+import { CakeSlice, CookingPot, Cookie, CupSoda, Store, type LucideIcon } from "lucide-react";
 import type { UmkmSubCategory } from "@/features/umkm/types";
 
-export const CATEGORY_CONFIG: Record<UmkmSubCategory, {
+const KNOWN_CATEGORY_CONFIG: Record<UmkmSubCategory, {
   slug: string;
   // Class from globals.css that sets the category colour (--c) for pins.
   pinClass: string;
@@ -34,6 +34,11 @@ export const CATEGORY_CONFIG: Record<UmkmSubCategory, {
     iconPaths: '<path d="M3 20h18"/><path d="M5 20v-6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6"/><path d="M5 16c2 0 2 1 3.5 1S11 16 12 16s2 1 3.5 1S17 16 19 16"/><path d="M12 12V8"/><path d="M12 5v.01"/>',
   },
 };
+
+const CUSTOM_CATEGORY_CONFIG = { slug: "custom", pinClass: "c-custom", icon: Store, iconPaths: '<path d="m2 7 2-4h16l2 4v4H2z"/><path d="M4 11v10h16V11M9 21v-7h6v7"/>' };
+export const CATEGORY_CONFIG = new Proxy(KNOWN_CATEGORY_CONFIG, {
+  get(target, key: string) { return Object.prototype.hasOwnProperty.call(target, key) ? target[key] : CUSTOM_CATEGORY_CONFIG; },
+});
 
 export function CategoryIcon({ category, className = "i" }: { category: UmkmSubCategory; className?: string }) {
   const Icon = CATEGORY_CONFIG[category].icon;

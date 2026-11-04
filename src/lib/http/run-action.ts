@@ -1,5 +1,6 @@
 import { ApiResponse } from "@/lib/http/api-response";
 import type { SuccessResponse } from "@/lib/http/success-response";
+import { auditFailure } from "@/lib/audit-failure";
 
 /** Plain object returned to the browser, because server actions cannot return class instances. */
 export type ActionState = { success: boolean; message: string };
@@ -26,10 +27,34 @@ export async function runAction(action: () => Promise<SuccessResponse<unknown>>)
     if (isNextControlFlowError(error)) throw error;
 
     if (error instanceof ApiResponse) {
+      await auditFailure(error.statusCode, error.message);
       return { success: false, message: error.message };
     }
 
     console.error("Unhandled action error:", error);
+    await auditFailure(500, INTERNAL_ERROR_MESSAGE);
+    return { success: false, message: INTERNAL_ERROR_MESSAGE };
+  }
+}
+
+/** Like `ActionState`, plus the data of the action, for example the key that was just created. */
+export type DataActionState<Data> = ActionState & { data?: Data };
+
+/** `runAction` for actions that call the server directly and need the result back. */
+export async function runActionWithData<Data>(action: () => Promise<SuccessResponse<Data>>): Promise<DataActionState<Data>> {
+  try {
+    const result = await action();
+    return { success: result.success, message: result.message, data: result.data };
+  } catch (error) {
+    if (isNextControlFlowError(error)) throw error;
+
+    if (error instanceof ApiResponse) {
+      await auditFailure(error.statusCode, error.message);
+      return { success: false, message: error.message };
+    }
+
+    console.error("Unhandled action error:", error);
+    await auditFailure(500, INTERNAL_ERROR_MESSAGE);
     return { success: false, message: INTERNAL_ERROR_MESSAGE };
   }
 }

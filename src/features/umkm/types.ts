@@ -1,9 +1,28 @@
 export type UmkmCategory = "Kuliner";
 
 export const UMKM_SUB_CATEGORIES = ["Camilan", "Makanan", "Minuman", "Kue & Roti"] as const;
-export type UmkmSubCategory = (typeof UMKM_SUB_CATEGORIES)[number];
+export type UmkmSubCategory = string;
 
-export type LocationStatus = "estimated" | "verified" | "outside";
+
+
+export const SOCIAL_PLATFORMS = ["Instagram", "TikTok", "Facebook", "YouTube", "Situs web", "Lainnya"] as const;
+export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
+
+export interface SocialLink {
+  platform: SocialPlatform;
+  customName?: string;
+  handle: string;
+}
+
+export interface CatalogProduct {
+  id: string;
+  name: string;
+  price: number | null;
+  priceLabel: string;
+  unit: string;
+  description: string;
+  photoUrl: string;
+}
 
 export interface Umkm {
   id: string;
@@ -16,9 +35,15 @@ export interface Umkm {
   subCategory: UmkmSubCategory;
   latitude: number;
   longitude: number;
-  locationStatus: LocationStatus;
+  priceDescription?: string;
+  catalog?: CatalogProduct[];
+  featuredProduct?: string;
+  notes?: string;
+  googleMapsUrl?: string;
   contact?: string;
+  // Legacy single link, kept as the first of `socials` for older readers.
   website?: string;
+  socials: SocialLink[];
   openingHours?: string;
   closingHours?: string;
   photos?: string[];

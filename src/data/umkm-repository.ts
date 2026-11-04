@@ -1,16 +1,15 @@
 import "server-only";
 import { umkmData as fallbackData } from "@/data/umkm";
-import type { LocationStatus, Umkm, UmkmSubCategory } from "@/features/umkm/types";
+import type { CatalogProduct, SocialLink, Umkm, UmkmSubCategory } from "@/features/umkm/types";
 import { idSchema } from "@/features/umkm/validation";
 import { ApiResponse } from "@/lib/http/api-response";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const UMKM_COLUMNS =
-  "id,source_no,owner_name,name,products,address,latitude,longitude,location_status," +
-  "contact,website,opening_hours,closing_hours,photos,categories!inner(name)";
+export const UMKM_COLUMNS = "*,categories!inner(name)";
 
-type DatabaseUmkm = {
+export type DatabaseUmkm = {
   id: string;
   source_no: number | null;
   owner_name: string | null;
@@ -19,16 +18,27 @@ type DatabaseUmkm = {
   address: string | null;
   latitude: number;
   longitude: number;
-  location_status: LocationStatus;
+  price_description?: string | null;
+  catalog?: CatalogProduct[] | null;
+  featured_product?: string | null;
+  notes?: string | null;
+  google_maps_url?: string | null;
   contact?: string | null;
   website?: string | null;
+  socials?: SocialLink[] | null;
   opening_hours?: string | null;
   closing_hours?: string | null;
   photos?: string[] | null;
   categories: { name: UmkmSubCategory } | { name: UmkmSubCategory }[];
 };
 
-function toPublicUmkm(row: DatabaseUmkm): Umkm {
+// Rows saved before the socials column existed only have the single `website` text.
+function readSocials(row: DatabaseUmkm): SocialLink[] {
+  if (Array.isArray(row.socials) && row.socials.length > 0) return row.socials.map(link => link.platform === "Lainnya" && !link.customName ? { ...link, customName: "Lainnya" } : link);
+  return row.website?.trim() ? [{ platform: "Situs web", handle: row.website.trim() }] : [];
+}
+
+export function toPublicUmkm(row: DatabaseUmkm): Umkm {
   const relation = Array.isArray(row.categories) ? row.categories[0] : row.categories;
 
   return {
@@ -42,9 +52,14 @@ function toPublicUmkm(row: DatabaseUmkm): Umkm {
     subCategory: relation.name,
     latitude: Number(row.latitude),
     longitude: Number(row.longitude),
-    locationStatus: row.location_status,
+    priceDescription: row.price_description ?? undefined,
+    catalog: Array.isArray(row.catalog) ? row.catalog : [],
+    featuredProduct: row.featured_product ?? undefined,
+    notes: row.notes ?? undefined,
+    googleMapsUrl: row.google_maps_url ?? undefined,
     contact: row.contact ?? undefined,
     website: row.website ?? undefined,
+    socials: readSocials(row),
     openingHours: row.opening_hours ?? undefined,
     closingHours: row.closing_hours ?? undefined,
     photos: Array.isArray(row.photos) ? row.photos : [],
@@ -67,6 +82,7 @@ export async function listUmkm(): Promise<Umkm[]> {
     .select(UMKM_COLUMNS)
     .eq("is_active", true)
     .order("name");
+
 
   if (error) {
     throw new ApiResponse(500, `Gagal memuat data UMKM: ${error.message}`);
@@ -96,6 +112,28 @@ export async function getUmkm(id: string): Promise<Umkm | undefined> {
     .eq("id", id)
     .eq("is_active", true)
     .maybeSingle();
+
+
+  if (error) {
+    throw new ApiResponse(500, `Gagal memuat data UMKM: ${error.message}`);
+  }
+
+  return data ? toPublicUmkm(data as unknown as DatabaseUmkm) : undefined;
+}
+
+/**
+ * One UMKM by id for an owner's own page. Uses the service-role client so the owner sees the UMKM
+ * even while it is hidden; the caller must already know that the key belongs to this UMKM.
+ * @throws {ApiResponse} 500 if the database query fails
+ */
+export async function getUmkmForOwner(id: string): Promise<Umkm | undefined> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("umkm")
+    .select(UMKM_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
+
 
   if (error) {
     throw new ApiResponse(500, `Gagal memuat data UMKM: ${error.message}`);

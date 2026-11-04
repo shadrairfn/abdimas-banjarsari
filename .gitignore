@@ -10,13 +10,20 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-/supabase/
+/supabase/*
+!/supabase/migrations/
+/data-imports/
 # testing
 /coverage
 
 # next.js
 /.next/
 /out/
+
+/docs
+
+scripts/seed-*.mjs
+scripts/load-env.mjs
 
 # production
 /build

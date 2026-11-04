@@ -5,8 +5,10 @@ export function revalidateUmkmPages(umkmId?: string) {
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/api/umkm");
+  revalidatePath("/bandingkan");
 
   if (umkmId) {
     revalidatePath(`/umkm/${umkmId}`);
+    revalidatePath(`/rute/${umkmId}`);
   }
 }

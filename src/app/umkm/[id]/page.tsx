@@ -9,7 +9,6 @@ import {
   Navigation,
   Package,
   Phone,
-  TriangleAlert,
   ChevronRight,
 } from "lucide-react";
 import { Rail } from "@/components/rail";
@@ -18,11 +17,13 @@ import { getUmkm } from "@/data/umkm-repository";
 import { PhotoGallery } from "@/features/umkm/components/photo-gallery";
 import { LocationMap } from "@/features/umkm/components/location-map";
 import { ShareButton } from "@/features/umkm/components/share-button";
-import { StatusBadge } from "@/features/umkm/components/status-badge";
+import { ProductCatalog } from "@/features/umkm/components/product-catalog";
+import { ActivityPing } from "@/features/activity/components/activity-ping";
 import {
-  directionsUrl,
   displayText,
-  externalUrl,
+  socialLabel,
+  socialUrl,
+  socialPlatformLabel,
   formatCoordinates,
   formatOperatingHours,
   villageName,
@@ -55,12 +56,12 @@ export default async function UmkmDetailPage({ params }: PageProps<"/umkm/[id]">
   const village = villageName(item.address);
   const owner = displayText(item.ownerName);
   const hours = formatOperatingHours(item.openingHours, item.closingHours);
-  const isVerified = item.locationStatus === "verified";
   const sharePath = `/umkm/${item.id}`;
   const shareText = `${brand} · ${displayText(item.products, "sentence")} (Banjarsari, Garut)`;
 
   return (
     <div className="app page-min-h" style={{ position: "relative" }}>
+      <ActivityPing label={`Profil usaha: ${brand}`} />
       <Rail
         items={[
           { label: "Peta", icon: "map", href: "/", active: true },
@@ -93,12 +94,11 @@ export default async function UmkmDetailPage({ params }: PageProps<"/umkm/[id]">
               <h1 className="pf-title">{brand}</h1>
               <div className="pf-badges">
                 <span className="bdg sec">{item.subCategory}</span>
-                <StatusBadge status={item.locationStatus} />
                 <span className="mut pf-sub">{village} · {owner}</span>
               </div>
             </div>
             <div className="pf-actions">
-              <a className="btn" href={directionsUrl(item)} target="_blank" rel="noreferrer"><Navigation className="i" />Rute</a>
+              <Link className="btn" href={`/rute/${item.id}`}><Navigation className="i" />Rute</Link>
               <Link className="btn o" href={`/bandingkan?a=${item.id}`}><Columns2 className="i" />Bandingkan</Link>
               <ShareButton title={brand} text={shareText} path={sharePath} />
             </div>
@@ -111,6 +111,9 @@ export default async function UmkmDetailPage({ params }: PageProps<"/umkm/[id]">
               </div>
               <div className="card pf-card pf-products">
                 <div className="fw6" style={{ fontSize: 16, lineHeight: "16px" }}>Produk</div>
+                <ProductCatalog item={item} />
+                {item.featuredProduct && <div><span className="mut">Produk unggulan</span><p>{item.featuredProduct}</p></div>}
+                {item.notes && <div className="alert"><div><b>Catatan usaha</b><span>{item.notes}</span></div></div>}
                 <div style={{ display: "flex", gap: 12, alignItems: "center", padding: 12, border: "1px solid var(--bd)", borderRadius: "var(--r)" }}>
                   <Package className="i" />
                   <span>{displayText(item.products, "sentence") || "Produk belum dicantumkan"}</span>
@@ -125,15 +128,6 @@ export default async function UmkmDetailPage({ params }: PageProps<"/umkm/[id]">
                   <MapPin className="i" />
                   <span>{item.address ? displayText(item.address) : "Alamat belum dicantumkan"}</span>
                 </div>
-                {!isVerified && (
-                  <div className="alert">
-                    <TriangleAlert className="i" style={{ color: "var(--wnf)" }} />
-                    <div>
-                      <b>Lokasi perkiraan</b>
-                      <span>Gunakan sebagai petunjuk area.</span>
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="card pf-card pf-info">
                 <div className="fw6" style={{ fontSize: 16, lineHeight: "16px", marginBottom: 8 }}>Informasi</div>
@@ -143,9 +137,14 @@ export default async function UmkmDetailPage({ params }: PageProps<"/umkm/[id]">
                     <a href={whatsappUrl(item.contact)} target="_blank" rel="noreferrer">{item.contact}</a>
                   </InfoItem>
                 )}
-                {item.website && (
+                {item.socials.length > 0 && (
                   <InfoItem icon={Globe} label="Media sosial">
-                    <a href={externalUrl(item.website)} target="_blank" rel="noreferrer">{item.website.replace(/^https?:\/\//, "")}</a>
+                    {item.socials.map((link) => (
+                      <div key={`${link.platform}-${link.handle}`}>
+                        <a href={socialUrl(link)} target="_blank" rel="noreferrer">{socialLabel(link)}</a>
+                        <span className="mut" style={{ fontWeight: 400 }}> · {socialPlatformLabel(link)}</span>
+                      </div>
+                    ))}
                   </InfoItem>
                 )}
                 <InfoItem icon={MapPin} label="Koordinat"><span className="mono">{formatCoordinates(item.latitude, item.longitude)}</span></InfoItem>

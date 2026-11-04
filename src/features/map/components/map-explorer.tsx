@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ComparePickerDialog } from "@/features/umkm/components/compare-picker-dialog";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -38,28 +40,33 @@ import { Rail } from "@/components/rail";
 import { SelectMenu, type SelectOption } from "@/components/select-menu";
 import { CategoryIcon } from "@/features/umkm/categories";
 import { PhotoGallery } from "@/features/umkm/components/photo-gallery";
-import { StatusBadge } from "@/features/umkm/components/status-badge";
 import {
-  directionsUrl,
   displayText,
   formatDistance,
   formatOperatingHours,
+  socialLabel,
+  socialUrl,
   villageName,
   whatsappUrl,
 } from "@/features/umkm/format";
 import { compareHref, loadCompareIds, saveCompareIds, toggleCompareId } from "@/features/umkm/compare";
-import { BANJARSARI_CENTER, UMKM_SUB_CATEGORIES, type Umkm } from "@/features/umkm/types";
+import { BANJARSARI_CENTER, type Umkm } from "@/features/umkm/types";
 import type { MapControls } from "@/features/map/components/umkm-map";
+import { useMapProvider } from "@/features/map/google-maps-loader";
 import { loadMapView, saveMapView, type MapCamera } from "@/features/map/view-state";
 import { distanceKm, type Coordinates } from "@/lib/geo";
 import { useTheme } from "@/lib/theme/use-theme";
+import { useCategoryNames } from "@/features/categories/category-provider";
+import { usePersistentState } from "@/lib/ui/use-persistent-state";
+import { ProductCatalog } from "@/features/umkm/components/product-catalog";
+import { ActivityPing } from "@/features/activity/components/activity-ping";
 
 interface MapExplorerProps {
   initialItems: Umkm[];
   initialSelectedId?: string;
 }
 
-type CategoryFilter = "Semua" | (typeof UMKM_SUB_CATEGORIES)[number];
+type CategoryFilter = string;
 // A radius in km around the map center, every UMKM, or only what is inside the visible map.
 type Area = "all" | "viewport" | number;
 
@@ -68,11 +75,6 @@ const UmkmMap = dynamic(
   { ssr: false, loading: () => <div className="map-canvas" /> },
 );
 
-const CATEGORY_FILTERS: CategoryFilter[] = ["Semua", ...UMKM_SUB_CATEGORIES];
-const CATEGORY_OPTIONS: SelectOption<CategoryFilter>[] = CATEGORY_FILTERS.map((value) => ({
-  value,
-  label: value === "Semua" ? "Semua kategori" : value,
-}));
 const AREA_OPTIONS: SelectOption<string>[] = [
   { value: "all", label: "Semua" },
   { value: "1", label: "≤ 1 km" },
@@ -199,18 +201,7 @@ function resultsPadding(detailOpen: boolean) {
   return { top: RESULTS_TOP, bottom: RESULTS_BOTTOM, right: detailOpen ? DETAIL_PANEL_PADDING : 0 };
 }
 
-function Legend() {
-  return (
-    <>
-      <span className="mut" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-        <span className="legend-dot" />Terverifikasi
-      </span>
-      <span className="mut" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-        <span className="legend-dot est" />Perkiraan
-      </span>
-    </>
-  );
-}
+function Legend() { return null; }
 
 function UmkmCard({
   entry,
@@ -245,7 +236,6 @@ function UmkmCard({
       </div>
       <div className="mut ell" style={{ fontSize: 13 }}>{displayText(item.products, "sentence")}</div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <StatusBadge status={item.locationStatus} />
         <span style={{ flex: 1 }} />
         <button
           type="button"
@@ -261,15 +251,13 @@ function UmkmCard({
           <Columns2 className="i sm" />
         </button>
         <Link className="btn o sm" href={`/umkm/${item.id}`} onClick={(event) => event.stopPropagation()}>Profil</Link>
-        <a
+        <Link
           className="btn sm"
-          href={directionsUrl(item)}
-          target="_blank"
-          rel="noreferrer"
+          href={`/rute/${item.id}`}
           onClick={(event) => event.stopPropagation()}
         >
           <Navigation className="i sm" />Rute
-        </a>
+        </Link>
       </div>
     </div>
   );
@@ -285,7 +273,13 @@ function InfoRow({ icon: Icon, children }: { icon: typeof Clock; children: React
 }
 
 export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProps) {
+  const categoryNames = useCategoryNames();
+  const CATEGORY_FILTERS: CategoryFilter[] = ["Semua", ...categoryNames];
+  const CATEGORY_OPTIONS = CATEGORY_FILTERS.map(value => ({ value, label: value === "Semua" ? "Semua kategori" : value }));
   const { theme, toggleTheme } = useTheme();
+  const mapProvider = useMapProvider();
+  const router = useRouter();
+  const [compareFirst, setCompareFirst] = useState<Umkm | null>(null);
   // A link with ?selected= wins over the last view of this browser tab.
   const [restored] = useState(() => (initialSelectedId ? null : loadMapView()));
   const startItem = initialItems.find((item) => item.id === (initialSelectedId ?? restored?.selectedId)) ?? null;
@@ -302,7 +296,7 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
   );
   const [area, setArea] = useState<Area>(startArea);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [listOpen, setListOpen] = useState(false);
+  const [listOpen, setListOpen] = usePersistentState("map:list-open", false);
   // Hides the cards at the bottom so the whole map is visible.
   const [carouselHidden, setCarouselHidden] = useState(restored?.carouselHidden === true);
   const [selectedId, setSelectedId] = useState<string | null>(startItem?.id ?? null);
@@ -347,7 +341,7 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
   const isSearching = query.trim().length > 0;
 
   const mapItems = useMemo(() => ranked.map((entry) => entry.item), [ranked]);
-  const activeIndex = Math.max(0, ranked.findIndex((entry) => entry.item.id === selectedId));
+  const activeIndex = ranked.findIndex((entry) => entry.item.id === selectedId);
   const activeEntry = ranked[activeIndex] ?? null;
   const detailItem = detailOpen ? initialItems.find((item) => item.id === selectedId) ?? null : null;
   const detailDistance = detailItem ? distanceKm(center, detailItem) : 0;
@@ -411,6 +405,7 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
   const handleUserZoom = useCallback(() => setArea("viewport"), []);
 
   function toggleCompare(item: Umkm) {
+    if (!compareIds.includes(item.id)) setCompareFirst(item);
     setCompareIds((current) => toggleCompareId(current, item.id));
   }
 
@@ -759,6 +754,7 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
 
   return (
     <main className="app page-h" style={{ position: "relative", overflow: "hidden" }}>
+      <ActivityPing label="Peta UMKM" />
       <Rail
         items={[
           { label: "Peta", icon: "map", active: true, onClick: closeDetail },
@@ -771,7 +767,7 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
       <div className="map-area">
         <UmkmMap
           items={mapItems}
-          selectedId={activeEntry?.item.id ?? null}
+          selectedId={selectedId}
           center={center}
           userLocation={userLocation}
           radiusKm={typeof area === "number" && !isSearching ? area : null}
@@ -842,13 +838,12 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
                   <div className="mut" style={{ marginTop: 2 }}>{villageName(detailItem.address)} · {formatDistance(detailDistance)}</div>
                   <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
                     <span className="bdg sec">{detailItem.subCategory}</span>
-                    <StatusBadge status={detailItem.locationStatus} />
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, padding: "16px 20px 0" }}>
-                  <a className="btn" style={{ flex: 1 }} href={directionsUrl(detailItem)} target="_blank" rel="noreferrer">
+                  <Link className="btn" style={{ flex: 1 }} href={`/rute/${detailItem.id}`}>
                     <Navigation className="i" />Rute
-                  </a>
+                  </Link>
                   <button type="button" className="btn o" style={{ flex: 1 }} onClick={shareItem}>
                     {copied ? <Check className="i" /> : <Share2 className="i" />}{copied ? "Tersalin" : "Bagikan"}
                   </button>
@@ -868,10 +863,13 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
                       <a href={whatsappUrl(detailItem.contact)} target="_blank" rel="noreferrer">{detailItem.contact}</a>
                     </InfoRow>
                   )}
-                  {detailItem.website && (
-                    <InfoRow icon={Globe}>{detailItem.website.replace(/^https?:\/\//, "")}</InfoRow>
-                  )}
+                  {detailItem.socials.map((link) => (
+                    <InfoRow key={`${link.platform}-${link.handle}`} icon={Globe}>
+                      <a href={socialUrl(link)} target="_blank" rel="noreferrer">{socialLabel(link)}</a>
+                    </InfoRow>
+                  ))}
                   <InfoRow icon={Package}>{displayText(detailItem.products, "sentence")}</InfoRow>
+                  <ProductCatalog item={detailItem} compact />
                   <InfoRow icon={MapPin}>{detailItem.address ? displayText(detailItem.address) : "Alamat belum dicantumkan"}</InfoRow>
                   <InfoRow icon={Users}>{displayText(detailItem.ownerName)}</InfoRow>
                 </div>
@@ -947,7 +945,7 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
         <div className="only-mobile mobile-dock">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span className="fcard fw6" style={{ padding: "0 12px", height: 32, display: "inline-flex", alignItems: "center", fontSize: 13 }}>
-              {ranked.length === 0 ? "0 UMKM" : `${activeIndex + 1} / ${ranked.length}`}
+              {activeIndex < 0 ? `${ranked.length} UMKM` : `${activeIndex + 1} / ${ranked.length}`}
             </span>
             <div className="fcard" style={{ display: "flex" }}>
               <button type="button" className="btn ic sm g" aria-label="Sebelumnya" title="Sebelumnya" disabled={activeIndex <= 0} onClick={() => stepSelection(-1)}>
@@ -1003,20 +1001,21 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
         <Link href="/admin"><ShieldCheck className="i" />Admin</Link>
       </nav>
 
+      {compareFirst && <ComparePickerDialog items={initialItems} excludeId={compareFirst.id} onClose={() => setCompareFirst(null)} onPick={item => { const ids = [compareFirst.id, item.id]; setCompareIds(ids); saveCompareIds(ids); setCompareFirst(null); router.push(compareHref(ids)); }} />}
       <Dialog open={aboutOpen} onClose={() => setAboutOpen(false)} labelledBy="about-title">
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h2 id="about-title">Tentang Peta UMKM</h2>
           <p>Direktori geografis UMKM Desa Banjarsari, Bayongbong, Garut.</p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {["Titik usaha per kampung", "Filter kategori dan produk", "Titik terverifikasi dan perkiraan dibedakan"].map((text) => (
+          {["Titik usaha per kampung", "Filter kategori dan produk", "Temukan lokasi dan rute menuju usaha"].map((text) => (
             <div key={text} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
               <Check className="i sm" style={{ marginTop: 3 }} />
               <span>{text}</span>
             </div>
           ))}
         </div>
-        <p style={{ fontSize: 12 }}>Peta © OpenFreeMap, data © OpenStreetMap contributors.</p>
+        <p style={{ fontSize: 12 }}>{mapProvider === "google" ? "Peta disediakan oleh Google Maps." : "Peta © OpenFreeMap, data © OpenStreetMap contributors."}</p>
         <div className="ft">
           <button type="button" className="btn o" onClick={() => setAboutOpen(false)}>Tutup</button>
         </div>

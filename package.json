@@ -8,7 +8,6 @@
     "start": "next start",
     "lint": "eslint",
     "seed:supabase": "node scripts/seed-supabase.mjs",
-    "seed:dummy": "node scripts/seed-dummy.mjs",
     "seed:admin": "node scripts/seed-admin.mjs"
   },
   "dependencies": {
@@ -24,6 +23,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/geojson": "^7946.0.16",
+    "@types/google.maps": "^3.66.9",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
