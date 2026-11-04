@@ -3,7 +3,6 @@ export type UmkmCategory = "Kuliner";
 export const UMKM_SUB_CATEGORIES = ["Camilan", "Makanan", "Minuman", "Kue & Roti"] as const;
 export type UmkmSubCategory = (typeof UMKM_SUB_CATEGORIES)[number];
 
-export type LocationStatus = "estimated" | "verified" | "outside";
 
 export interface Umkm {
   id: string;
@@ -16,7 +15,6 @@ export interface Umkm {
   subCategory: UmkmSubCategory;
   latitude: number;
   longitude: number;
-  locationStatus: LocationStatus;
   contact?: string;
   website?: string;
   openingHours?: string;

@@ -105,11 +105,9 @@ function createMarkerElement(item: Umkm) {
   element.setAttribute("aria-label", `Pilih ${displayText(item.brand)}, kategori ${item.subCategory}`);
 
   const pinClass = CATEGORY_CONFIG[item.subCategory].pinClass;
-  const estimated = item.locationStatus === "verified" ? "" : " est";
-  const verifiedDot = item.locationStatus === "verified" ? '<span class="vd"></span>' : "";
   const pin = document.createElement("div");
-  pin.className = `pin ${pinClass}${estimated}`;
-  pin.innerHTML = `${categoryIconSvg(item.subCategory)}${verifiedDot}`;
+  pin.className = `pin ${pinClass}`;
+  pin.innerHTML = `${categoryIconSvg(item.subCategory)}`;
 
   const label = document.createElement("span");
   label.className = "lab";
@@ -174,7 +172,7 @@ function UmkmMapWithMarkers({
   const initialView = useRef(initialCamera);
   const markerItemsKey = useMemo(
     () => items
-      .map((item) => `${item.id}:${item.latitude}:${item.longitude}:${item.subCategory}:${item.locationStatus}:${item.brand}`)
+      .map((item) => `${item.id}:${item.latitude}:${item.longitude}:${item.subCategory}:${item.brand}`)
       .sort()
       .join("|"),
     [items],

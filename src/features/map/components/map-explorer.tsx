@@ -38,7 +38,6 @@ import { Rail } from "@/components/rail";
 import { SelectMenu, type SelectOption } from "@/components/select-menu";
 import { CategoryIcon } from "@/features/umkm/categories";
 import { PhotoGallery } from "@/features/umkm/components/photo-gallery";
-import { StatusBadge } from "@/features/umkm/components/status-badge";
 import {
   directionsUrl,
   displayText,
@@ -199,18 +198,7 @@ function resultsPadding(detailOpen: boolean) {
   return { top: RESULTS_TOP, bottom: RESULTS_BOTTOM, right: detailOpen ? DETAIL_PANEL_PADDING : 0 };
 }
 
-function Legend() {
-  return (
-    <>
-      <span className="mut" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-        <span className="legend-dot" />Terverifikasi
-      </span>
-      <span className="mut" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-        <span className="legend-dot est" />Perkiraan
-      </span>
-    </>
-  );
-}
+function Legend() { return null; }
 
 function UmkmCard({
   entry,
@@ -245,7 +233,6 @@ function UmkmCard({
       </div>
       <div className="mut ell" style={{ fontSize: 13 }}>{displayText(item.products, "sentence")}</div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <StatusBadge status={item.locationStatus} />
         <span style={{ flex: 1 }} />
         <button
           type="button"
@@ -842,7 +829,6 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
                   <div className="mut" style={{ marginTop: 2 }}>{villageName(detailItem.address)} · {formatDistance(detailDistance)}</div>
                   <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
                     <span className="bdg sec">{detailItem.subCategory}</span>
-                    <StatusBadge status={detailItem.locationStatus} />
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, padding: "16px 20px 0" }}>

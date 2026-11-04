@@ -4,6 +4,7 @@ import { createSupabaseAdminClient, isServiceRoleConfigured } from "@/lib/supaba
 
 export interface AdminUser {
   userId: string;
+  role: "admin" | "superadmin";
   email: string;
   fullName: string;
   isActive: boolean;
@@ -23,7 +24,8 @@ export async function listAdmins(): Promise<AdminUser[]> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("admins")
-    .select("user_id, email, full_name, is_active, created_at")
+    .select("user_id, email, full_name, is_active, role, created_at")
+    .not("user_id", "is", null)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -32,6 +34,7 @@ export async function listAdmins(): Promise<AdminUser[]> {
 
   return data.map((row) => ({
     userId: row.user_id,
+    role: row.role,
     email: row.email,
     fullName: row.full_name,
     isActive: row.is_active,

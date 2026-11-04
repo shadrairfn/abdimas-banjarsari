@@ -3,12 +3,10 @@ import { UMKM_SUB_CATEGORIES } from "@/features/umkm/types";
 
 const optionalText = (maximum: number) => z.string().trim().max(maximum).optional().default("");
 
-export const LOCATION_STATUSES = ["estimated", "verified", "outside"] as const;
 export const MAX_PHOTOS_PER_UMKM = 10;
 
 export const idSchema = z.string().uuid("ID tidak valid.");
 
-export const locationStatusSchema = z.enum(LOCATION_STATUSES);
 
 export const umkmInputSchema = z.object({
   id: idSchema.optional().or(z.literal("")),
@@ -19,7 +17,6 @@ export const umkmInputSchema = z.object({
   subCategory: z.enum(UMKM_SUB_CATEGORIES),
   latitude: z.coerce.number().min(-90, "Latitude minimal -90.").max(90, "Latitude maksimal 90."),
   longitude: z.coerce.number().min(-180, "Longitude minimal -180.").max(180, "Longitude maksimal 180."),
-  locationStatus: locationStatusSchema.default("verified"),
   contact: optionalText(50),
   website: optionalText(255),
   openingHours: optionalText(10),

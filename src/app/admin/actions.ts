@@ -4,11 +4,10 @@ import { redirect } from "next/navigation";
 import {
   adminInputSchema,
   idSchema,
-  locationStatusSchema,
   signInSchema,
   umkmInputSchema,
 } from "@/features/umkm/validation";
-import { getActiveAdmin, requireAdmin } from "@/lib/auth/admin";
+import { getActiveAdmin, requireAdmin, requireSuperadmin } from "@/lib/auth/admin";
 import { ApiResponse } from "@/lib/http/api-response";
 import { parseInput } from "@/lib/http/parse-input";
 import { runAction, type ActionState } from "@/lib/http/run-action";
@@ -102,7 +101,6 @@ async function upsertUmkm(formData: FormData) {
     category_id: category.id,
     latitude: input.latitude,
     longitude: input.longitude,
-    location_status: input.locationStatus,
     contact: input.contact || null,
     website: input.website || null,
     opening_hours: input.openingHours || null,
@@ -132,33 +130,13 @@ export async function upsertUmkmAction(_state: ActionState, formData: FormData):
   return runAction(() => upsertUmkm(formData));
 }
 
-export async function setLocationStatusAction(id: string, status: string): Promise<ActionState> {
-  return runAction(async () => {
-    const umkmId = parseInput(idSchema, id);
-    const locationStatus = parseInput(locationStatusSchema, status);
-
-    const { supabase } = await requireAdmin();
-    const { error } = await supabase
-      .from("umkm")
-      .update({ location_status: locationStatus })
-      .eq("id", umkmId);
-
-    if (error) {
-      throw new ApiResponse(500, error.message);
-    }
-
-    revalidateUmkmPages(umkmId);
-
-    return new SuccessResponse(200, "Status lokasi berhasil diperbarui.");
-  });
-}
 
 /**
  * Register a new admin: a Supabase Auth user plus a row in the admins table.
  * @throws {ApiResponse} 400 invalid input, 401 not admin, 500 if the account cannot be saved
  */
 async function createAdmin(formData: FormData) {
-  await requireAdmin();
+  await requireSuperadmin();
 
   const input = parseInput(adminInputSchema, Object.fromEntries(formData));
   const serviceSupabase = createSupabaseAdminClient();
@@ -203,7 +181,7 @@ export async function createAdminAction(_state: ActionState, formData: FormData)
 export async function toggleAdminStatusAction(userId: string, nextStatus: boolean): Promise<ActionState> {
   return runAction(async () => {
     const targetUserId = parseInput(idSchema, userId);
-    const { admin } = await requireAdmin();
+    const { admin } = await requireSuperadmin();
 
     if (admin.id === targetUserId) {
       throw new ApiResponse(400, "Anda tidak dapat mengubah status akun Anda sendiri.");

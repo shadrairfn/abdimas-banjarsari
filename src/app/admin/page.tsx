@@ -9,12 +9,14 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export default async function AdminPage() {
   const configured = isSupabaseConfigured();
   let adminEmail: string | undefined;
+  let canManageAdmins = false;
   if (configured) {
     const supabase = await createSupabaseServerClient();
     const user = await getActiveAdmin(supabase);
     if (!user) redirect("/admin/login");
     adminEmail = user.email;
+    canManageAdmins = user.adminRole === "superadmin";
   }
   const [items, adminList] = await Promise.all([listUmkm(), listAdmins()]);
-  return <AdminDashboard items={items} adminList={adminList} configured={configured} adminEmail={adminEmail} />;
+  return <AdminDashboard items={items} adminList={adminList} configured={configured} adminEmail={adminEmail} canManageAdmins={canManageAdmins} />;
 }

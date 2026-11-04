@@ -1,13 +1,13 @@
 import "server-only";
 import { umkmData as fallbackData } from "@/data/umkm";
-import type { LocationStatus, Umkm, UmkmSubCategory } from "@/features/umkm/types";
+import type { Umkm, UmkmSubCategory } from "@/features/umkm/types";
 import { idSchema } from "@/features/umkm/validation";
 import { ApiResponse } from "@/lib/http/api-response";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const UMKM_COLUMNS =
-  "id,source_no,owner_name,name,products,address,latitude,longitude,location_status," +
+  "id,source_no,owner_name,name,products,address,latitude,longitude," +
   "contact,website,opening_hours,closing_hours,photos,categories!inner(name)";
 
 type DatabaseUmkm = {
@@ -19,7 +19,6 @@ type DatabaseUmkm = {
   address: string | null;
   latitude: number;
   longitude: number;
-  location_status: LocationStatus;
   contact?: string | null;
   website?: string | null;
   opening_hours?: string | null;
@@ -42,7 +41,6 @@ function toPublicUmkm(row: DatabaseUmkm): Umkm {
     subCategory: relation.name,
     latitude: Number(row.latitude),
     longitude: Number(row.longitude),
-    locationStatus: row.location_status,
     contact: row.contact ?? undefined,
     website: row.website ?? undefined,
     openingHours: row.opening_hours ?? undefined,

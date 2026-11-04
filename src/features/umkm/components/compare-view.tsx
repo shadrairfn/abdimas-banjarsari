@@ -11,7 +11,6 @@ import { CategoryIcon } from "@/features/umkm/categories";
 import { compareHref, saveCompareIds } from "@/features/umkm/compare";
 import { LocationMap } from "@/features/umkm/components/location-map";
 import { PhotoGallery } from "@/features/umkm/components/photo-gallery";
-import { StatusBadge } from "@/features/umkm/components/status-badge";
 import {
   directionsUrl,
   displayText,
@@ -55,11 +54,6 @@ const ROWS: CompareRow[] = [
     render: (item) => <PhotoGallery photos={item.photos ?? []} title={displayText(item.brand)} variant="panel" />,
   },
   { label: "Kategori", render: (item) => item.subCategory, text: (item) => item.subCategory },
-  {
-    label: "Status titik",
-    render: (item) => <StatusBadge status={item.locationStatus} />,
-    text: (item) => item.locationStatus,
-  },
   {
     label: "Pemilik",
     render: (item) => textOrEmpty(displayText(item.ownerName)),
