@@ -9,7 +9,9 @@ import {
 } from "@/features/map/google-map-markers";
 import { getRingColor } from "@/features/map/map-style";
 import type { UmkmMapProps } from "@/features/map/map-types";
+import { appendMarkerPhoto } from "@/features/map/marker-photo";
 import { useGoogleMap } from "@/features/map/use-google-map";
+import { coverPhoto } from "@/features/umkm/cover-photo";
 import { displayText } from "@/features/umkm/format";
 
 function radiusBounds(
@@ -41,7 +43,7 @@ export function GoogleUmkmMap(props: UmkmMapProps) {
       items
         .map(
           (item) =>
-            `${item.id}:${item.latitude}:${item.longitude}:${item.subCategory}:${item.brand}`,
+            `${item.id}:${item.latitude}:${item.longitude}:${item.subCategory}:${item.brand}:${coverPhoto(item) ?? ""}`,
         )
         .sort()
         .join("|"),
@@ -225,6 +227,7 @@ export function GoogleUmkmMap(props: UmkmMapProps) {
     const events: (() => void)[] = [];
     for (const item of propsRef.current.items) {
       const element = createGooglePin(item, item.brand);
+      appendMarkerPhoto(element, item);
       const marker = new google.maps.marker.AdvancedMarkerElement({
         map,
         position: googlePosition(item),

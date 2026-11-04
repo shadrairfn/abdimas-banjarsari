@@ -683,3 +683,50 @@ html[data-rail-expanded="true"] {
   outline: 2px solid var(--pri);
   outline-offset: 3px;
 }
+.map-card-thumbnail.has-photo {
+  width: 64px;
+  height: 52px;
+  flex: none;
+  overflow: hidden;
+}
+.map-card-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.map-card-close {
+  flex: none;
+  align-self: flex-start;
+}
+.marker-photo {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: calc(100% + 8px);
+  width: 112px;
+  height: 80px;
+  overflow: hidden;
+  border: 3px solid var(--card);
+  border-radius: var(--rl);
+  background: var(--card);
+  box-shadow: var(--shs);
+}
+.is-selected > .marker-photo {
+  display: block;
+}
+.marker-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@media (max-width: 767px) {
+  .marker-photo {
+    width: 88px;
+    height: 64px;
+  }
+  .cc.mobile .map-card-thumbnail.has-photo {
+    width: 52px;
+    height: 44px;
+  }
+}

@@ -12,7 +12,9 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { applyMapPalette, getRingColor, MAP_STYLE_URL } from "@/features/map/map-style";
 import type { UmkmMapProps } from "@/features/map/map-types";
+import { appendMarkerPhoto } from "@/features/map/marker-photo";
 import { CATEGORY_CONFIG, categoryIconSvg } from "@/features/umkm/categories";
+import { coverPhoto } from "@/features/umkm/cover-photo";
 import { displayText } from "@/features/umkm/format";
 import type { Umkm } from "@/features/umkm/types";
 
@@ -80,6 +82,7 @@ function createMarkerElement(item: Umkm) {
   label.textContent = displayText(item.brand);
 
   element.append(pin, label);
+  appendMarkerPhoto(element, item);
 
   return element;
 }
@@ -147,7 +150,7 @@ function UmkmMapWithMarkers({
       items
         .map(
           (item) =>
-            `${item.id}:${item.latitude}:${item.longitude}:${item.subCategory}:${item.brand}`,
+            `${item.id}:${item.latitude}:${item.longitude}:${item.subCategory}:${item.brand}:${coverPhoto(item) ?? ""}`,
         )
         .sort()
         .join("|"),

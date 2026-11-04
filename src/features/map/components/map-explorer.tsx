@@ -52,6 +52,7 @@ import {
 import { ComparePickerDialog } from "@/features/umkm/components/compare-picker-dialog";
 import { PhotoGallery } from "@/features/umkm/components/photo-gallery";
 import { ProductCatalog } from "@/features/umkm/components/product-catalog";
+import { coverPhoto } from "@/features/umkm/cover-photo";
 import {
   displayText,
   formatDistance,
@@ -82,13 +83,14 @@ const UmkmMap = dynamic(
 
 const AREA_OPTIONS: SelectOption<string>[] = [
   { value: "all", label: "Semua" },
+  { value: "0.05", label: "≤ 50 m" },
   { value: "1", label: "≤ 1 km" },
   { value: "5", label: "≤ 5 km" },
   { value: "10", label: "≤ 10 km" },
   { value: "20", label: "≤ 20 km" },
   { value: "viewport", label: "Area peta" },
 ];
-const DEFAULT_RADIUS_KM = 1;
+const DEFAULT_RADIUS_KM = 0.05;
 const FOCUS_MIN_ZOOM = 15.5;
 const DETAIL_PANEL_PADDING = 396;
 const PHONE_DOCK_PADDING = 200;
@@ -261,6 +263,7 @@ function UmkmCard({
   mobile = false,
   onSelect,
   onCompare,
+  onClose,
 }: {
   entry: RankedUmkm;
   selected: boolean;
@@ -268,8 +271,10 @@ function UmkmCard({
   mobile?: boolean;
   onSelect: (item: Umkm) => void;
   onCompare: (item: Umkm) => void;
+  onClose?: () => void;
 }) {
   const { item, distance } = entry;
+  const photoUrl = coverPhoto(item);
 
   return (
     <div
@@ -278,8 +283,13 @@ function UmkmCard({
       onClick={() => onSelect(item)}
     >
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <span className="sq">
-          <CategoryIcon category={item.subCategory} />
+        <span className={`sq map-card-thumbnail${photoUrl ? " has-photo" : ""}`}>
+          {photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photoUrl} alt={`Foto ${displayText(item.brand)}`} loading="lazy" />
+          ) : (
+            <CategoryIcon category={item.subCategory} />
+          )}
         </span>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div className="ell fw5">{displayText(item.brand)}</div>
@@ -288,6 +298,19 @@ function UmkmCard({
           </div>
         </div>
         <span className="dist">{formatDistance(distance)}</span>
+        {mobile && onClose && (
+          <button
+            type="button"
+            className="btn ic sm g map-card-close"
+            aria-label="Tutup kartu UMKM"
+            onClick={(event) => {
+              event.stopPropagation();
+              onClose();
+            }}
+          >
+            <X className="i sm" />
+          </button>
+        )}
       </div>
       <div className="mut ell" style={{ fontSize: 13 }}>
         {displayText(item.products, "sentence")}
@@ -674,39 +697,10 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
     setLocationState("off");
   }
 
-  /** The first position moves the list and the map to the visitor, widening the distance if nothing is near. */
+  /** Center on the visitor while preserving the selected search distance. */
   function handleFirstFix(position: Coordinates) {
-    const nearest = initialItems.reduce<{ item: Umkm; distance: number } | null>((best, item) => {
-      const distance = distanceKm(position, item);
-
-      return !best || distance < best.distance ? { item, distance } : best;
-    }, null);
     const currentArea = areaRef.current;
-    const isNothingNear =
-      typeof currentArea === "number" && nearest !== null && nearest.distance > currentArea;
     setCenter(position);
-
-    if (isNothingNear && nearest) {
-      // Nothing inside the chosen distance: widen it and show the visitor together with the closest UMKM.
-      setArea("all");
-      flashMessage(
-        `Belum ada UMKM dalam ${currentArea} km dari Anda. Yang terdekat berjarak ${formatDistance(nearest.distance)}.`,
-      );
-      setFitRequest((current) => ({
-        key: current.key + 1,
-        center: position,
-        radiusKm: null,
-        bounds: [
-          Math.min(position.longitude, nearest.item.longitude),
-          Math.min(position.latitude, nearest.item.latitude),
-          Math.max(position.longitude, nearest.item.longitude),
-          Math.max(position.latitude, nearest.item.latitude),
-        ],
-        padding: resultsPadding(detailOpenRef.current),
-      }));
-
-      return;
-    }
 
     if (messageTimerRef.current !== null) {
       window.clearTimeout(messageTimerRef.current);
@@ -1344,6 +1338,10 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
               compared={compareIds.includes(activeEntry.item.id)}
               onSelect={(item) => focusItem(item, false)}
               onCompare={toggleCompare}
+              onClose={() => {
+                setSelectedId(null);
+                setIsDetailOpen(false);
+              }}
             />
           )}
         </div>
