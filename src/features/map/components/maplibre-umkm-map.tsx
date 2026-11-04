@@ -120,6 +120,7 @@ function UmkmMapWithMarkers({
 }: UmkmMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  const lastFitKeyRef = useRef<number | null>(null);
   const markersRef = useRef<Map<string, Marker>>(new Map());
   const userMarkerRef = useRef<Marker | null>(null);
   const onSelectRef = useRef(onSelect);
@@ -294,6 +295,7 @@ function UmkmMapWithMarkers({
       markers.clear();
       map.remove();
       mapRef.current = null;
+      lastFitKeyRef.current = null;
     };
   }, []);
 
@@ -348,7 +350,7 @@ function UmkmMapWithMarkers({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) {
+    if (!map || lastFitKeyRef.current === fitRequest.key) {
       return;
     }
 
@@ -356,6 +358,7 @@ function UmkmMapWithMarkers({
       return;
     }
 
+    lastFitKeyRef.current = fitRequest.key;
     const padding = { top: 0, right: 0, bottom: 0, left: 0, ...fitRequest.padding };
     const duration = fitRequest.instant ? 0 : 700;
     if (fitRequest.bounds) {

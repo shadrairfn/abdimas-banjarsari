@@ -21,17 +21,20 @@ function FallbackMap({
   camera,
   ...props
 }: UmkmMapProps & { camera: UmkmMapProps["initialCamera"] }) {
-  const [initial] = useState(() => ({ camera, requestKey: props.fitRequest.key }));
-  const request =
-    initial.camera && props.fitRequest.key === initial.requestKey
+  const [initial] = useState(() => ({
+    camera,
+    request: camera
       ? {
-          key: initial.requestKey,
-          center: initial.camera,
-          zoom: initial.camera.zoom,
+          key: props.fitRequest.key,
+          center: camera,
+          zoom: camera.zoom,
           radiusKm: null,
           instant: true,
         }
-      : props.fitRequest;
+      : props.fitRequest,
+  }));
+  // Keep restoration stable while viewport reports trigger parent renders during a drag.
+  const request = props.fitRequest.key === initial.request.key ? initial.request : props.fitRequest;
 
   return (
     <div className="map-canvas" data-map-provider="maplibre">
