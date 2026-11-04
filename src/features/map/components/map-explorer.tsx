@@ -40,6 +40,7 @@ import { Rail } from "@/components/rail";
 import { SelectMenu, type SelectOption } from "@/components/select-menu";
 import { useCategoryNames } from "@/features/categories/category-provider";
 import type { MapControls } from "@/features/map/components/umkm-map";
+import { getDefaultMapCenter } from "@/features/map/default-center";
 import { useMapProvider } from "@/features/map/google-maps-loader";
 import { loadMapView, type MapCamera, saveMapView } from "@/features/map/view-state";
 import { CategoryIcon } from "@/features/umkm/categories";
@@ -62,7 +63,7 @@ import {
   villageName,
   whatsappUrl,
 } from "@/features/umkm/format";
-import { BANJARSARI_CENTER, type Umkm } from "@/features/umkm/types";
+import type { Umkm } from "@/features/umkm/types";
 import { type Coordinates, distanceKm } from "@/lib/geo";
 import { useTheme } from "@/lib/theme/use-theme";
 import { usePersistentState } from "@/lib/ui/use-persistent-state";
@@ -380,7 +381,7 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
   const startCenter: Coordinates =
     isOpenedFromLink && startItem
       ? { latitude: startItem.latitude, longitude: startItem.longitude }
-      : (restored?.center ?? BANJARSARI_CENTER);
+      : (restored?.center ?? getDefaultMapCenter(initialItems));
   const startArea: Area = isOpenedFromLink
     ? "all"
     : (parseSavedArea(restored?.area) ?? DEFAULT_RADIUS_KM);
