@@ -79,7 +79,6 @@ const rawUmkm: RawUmkm[] = [
   [68,"ZAENAL MUTAQIN","KP. CILOA, BANJARSARI, BAYONGBONG, GARUT","TIGA SAUDARA","RENGGINANG"],
 ];
 
-const OUTSIDE_NUMBERS = new Set([34, 38, 43]);
 
 function hash(input: string) {
   let result = 2166136261;
@@ -136,7 +135,6 @@ export const umkmData: Umkm[] = rawUmkm.map((row) => {
     subCategory: classify(products),
     latitude: coordinates.latitude,
     longitude: coordinates.longitude,
-    locationStatus: OUTSIDE_NUMBERS.has(sourceNo) ? "outside" : "estimated",
     contact: "08123456789",
     website: undefined,
     openingHours: "08:00",

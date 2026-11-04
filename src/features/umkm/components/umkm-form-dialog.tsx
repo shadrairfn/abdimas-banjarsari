@@ -7,7 +7,7 @@ import { upsertUmkmAction } from "@/app/admin/actions";
 import { Dialog } from "@/components/dialog";
 import { SelectMenu } from "@/components/select-menu";
 import { displayText } from "@/features/umkm/format";
-import { BANJARSARI_CENTER, UMKM_SUB_CATEGORIES, type LocationStatus, type Umkm, type UmkmSubCategory } from "@/features/umkm/types";
+import { BANJARSARI_CENTER, UMKM_SUB_CATEGORIES, type Umkm, type UmkmSubCategory } from "@/features/umkm/types";
 import { MAX_PHOTOS_PER_UMKM } from "@/features/umkm/validation";
 import type { ActionState } from "@/lib/http/run-action";
 
@@ -18,11 +18,6 @@ const CoordinatePicker = dynamic(
 
 const initialState: ActionState = { success: false, message: "" };
 const CATEGORY_OPTIONS = UMKM_SUB_CATEGORIES.map((value) => ({ value, label: value }));
-const STATUS_OPTIONS: { value: LocationStatus; label: string }[] = [
-  { value: "verified", label: "Terverifikasi" },
-  { value: "estimated", label: "Perkiraan" },
-  { value: "outside", label: "Di luar desa" },
-];
 const CLOSE_DELAY_MS = 600;
 const ALL_DAY = "00:00";
 
@@ -64,7 +59,6 @@ function TextField({
 export function UmkmFormDialog({ item, onClose }: UmkmFormDialogProps) {
   const [state, formAction, pending] = useActionState(upsertUmkmAction, initialState);
   const [subCategory, setSubCategory] = useState<UmkmSubCategory>(item?.subCategory ?? "Camilan");
-  const [locationStatus, setLocationStatus] = useState<LocationStatus>(item?.locationStatus ?? "verified");
   // Kept as text so the admin can type "-7." without the value being rewritten while typing.
   const [latitudeText, setLatitudeText] = useState(String(item?.latitude ?? BANJARSARI_CENTER.latitude));
   const [longitudeText, setLongitudeText] = useState(String(item?.longitude ?? BANJARSARI_CENTER.longitude));
@@ -133,7 +127,6 @@ export function UmkmFormDialog({ item, onClose }: UmkmFormDialogProps) {
         <h2 id="umkm-form-title">{item ? "Edit UMKM" : "Tambah UMKM"}</h2>
         <input type="hidden" name="id" value={item?.id ?? ""} />
         <input type="hidden" name="subCategory" value={subCategory} />
-        <input type="hidden" name="locationStatus" value={locationStatus} />
         <input type="hidden" name="photos" value={JSON.stringify(photos)} />
         <input type="hidden" name="openingHours" value={openingHours} />
         <input type="hidden" name="closingHours" value={closingHours} />
@@ -156,18 +149,6 @@ export function UmkmFormDialog({ item, onClose }: UmkmFormDialogProps) {
             <TextField label="WhatsApp" name="contact" defaultValue={item?.contact} placeholder="[Nomor WhatsApp]" maxLength={50} />
             <TextField label="Media sosial" name="website" defaultValue={item?.website} placeholder="[akun media sosial]" maxLength={255} />
 
-            <div className="fl span-2">
-              <span className="lbl">Status titik</span>
-              <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-                {STATUS_OPTIONS.map((option) => (
-                  <label key={option.value} className="chk">
-                    <input type="radio" name="status-choice" checked={locationStatus === option.value} onChange={() => setLocationStatus(option.value)} />
-                    <span className={`rd${locationStatus === option.value ? " on" : ""}`} />
-                    {option.label}
-                  </label>
-                ))}
-              </div>
-            </div>
 
             <label className="chk span-2">
               <input type="checkbox" checked={is24Hours} onChange={(event) => toggle24Hours(event.target.checked)} />
@@ -218,7 +199,6 @@ export function UmkmFormDialog({ item, onClose }: UmkmFormDialogProps) {
                 latitude={latitude}
                 longitude={longitude}
                 subCategory={subCategory}
-                locationStatus={locationStatus}
                 onChange={(nextLatitude, nextLongitude) => {
                   setLatitudeText(nextLatitude.toFixed(6));
                   setLongitudeText(nextLongitude.toFixed(6));

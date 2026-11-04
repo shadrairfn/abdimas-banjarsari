@@ -10,12 +10,12 @@ import { useTheme } from "@/lib/theme/use-theme";
 const LOCATION_ZOOM = 15;
 
 /** Small read-only map with the selected pin of the design, used on the profile page. */
-export function LocationMap({ item }: { item: Pick<Umkm, "latitude" | "longitude" | "subCategory" | "locationStatus"> }) {
+export function LocationMap({ item }: { item: Pick<Umkm, "latitude" | "longitude" | "subCategory"> }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const { theme } = useTheme();
   const themeRef = useRef(theme);
-  const { latitude, longitude, subCategory, locationStatus } = item;
+  const { latitude, longitude, subCategory } = item;
 
   useEffect(() => {
     themeRef.current = theme;
@@ -42,7 +42,7 @@ export function LocationMap({ item }: { item: Pick<Umkm, "latitude" | "longitude
       map.on("style.load", () => applyMapPalette(map, themeRef.current));
 
       const pin = document.createElement("div");
-      pin.className = `pin ${CATEGORY_CONFIG[subCategory].pinClass}${locationStatus === "verified" ? "" : " est"} sel`;
+      pin.className = `pin ${CATEGORY_CONFIG[subCategory].pinClass} sel`;
       pin.innerHTML = categoryIconSvg(subCategory);
       pin.querySelector("svg")?.setAttribute("style", "width:22px;height:22px");
       const marker = new Marker({ element: pin, anchor: "center" }).setLngLat([longitude, latitude]).addTo(map);
@@ -59,7 +59,7 @@ export function LocationMap({ item }: { item: Pick<Umkm, "latitude" | "longitude
       cancelled = true;
       cleanup?.();
     };
-  }, [latitude, longitude, subCategory, locationStatus]);
+  }, [latitude, longitude, subCategory]);
 
   return <div ref={containerRef} className="loc-map" role="img" aria-label="Peta lokasi usaha" />;
 }

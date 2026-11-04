@@ -9,7 +9,6 @@ import {
   Navigation,
   Package,
   Phone,
-  TriangleAlert,
   ChevronRight,
 } from "lucide-react";
 import { Rail } from "@/components/rail";
@@ -18,7 +17,6 @@ import { getUmkm } from "@/data/umkm-repository";
 import { PhotoGallery } from "@/features/umkm/components/photo-gallery";
 import { LocationMap } from "@/features/umkm/components/location-map";
 import { ShareButton } from "@/features/umkm/components/share-button";
-import { StatusBadge } from "@/features/umkm/components/status-badge";
 import {
   directionsUrl,
   displayText,
@@ -55,7 +53,6 @@ export default async function UmkmDetailPage({ params }: PageProps<"/umkm/[id]">
   const village = villageName(item.address);
   const owner = displayText(item.ownerName);
   const hours = formatOperatingHours(item.openingHours, item.closingHours);
-  const isVerified = item.locationStatus === "verified";
   const sharePath = `/umkm/${item.id}`;
   const shareText = `${brand} · ${displayText(item.products, "sentence")} (Banjarsari, Garut)`;
 
@@ -93,7 +90,6 @@ export default async function UmkmDetailPage({ params }: PageProps<"/umkm/[id]">
               <h1 className="pf-title">{brand}</h1>
               <div className="pf-badges">
                 <span className="bdg sec">{item.subCategory}</span>
-                <StatusBadge status={item.locationStatus} />
                 <span className="mut pf-sub">{village} · {owner}</span>
               </div>
             </div>
@@ -125,15 +121,6 @@ export default async function UmkmDetailPage({ params }: PageProps<"/umkm/[id]">
                   <MapPin className="i" />
                   <span>{item.address ? displayText(item.address) : "Alamat belum dicantumkan"}</span>
                 </div>
-                {!isVerified && (
-                  <div className="alert">
-                    <TriangleAlert className="i" style={{ color: "var(--wnf)" }} />
-                    <div>
-                      <b>Lokasi perkiraan</b>
-                      <span>Gunakan sebagai petunjuk area.</span>
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="card pf-card pf-info">
                 <div className="fw6" style={{ fontSize: 16, lineHeight: "16px", marginBottom: 8 }}>Informasi</div>

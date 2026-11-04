@@ -3,20 +3,19 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
-import { CircleCheck, Download, LayoutDashboard, Loader2, LogOut, Map as MapIcon, MapPin, Pencil, Plus, Power, Search, Store, Trash2, TriangleAlert, UserPlus, Users } from "lucide-react";
+import { Download, LayoutDashboard, Loader2, LogOut, Map as MapIcon, Pencil, Plus, Power, Search, Store, Trash2, TriangleAlert, UserPlus, Users } from "lucide-react";
 import { createAdminAction, signOutAction, toggleAdminStatusAction } from "@/app/admin/actions";
 import { Dialog } from "@/components/dialog";
 import { Rail } from "@/components/rail";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { AdminUser } from "@/data/admin-repository";
-import { StatusBadge } from "@/features/umkm/components/status-badge";
 import { UmkmFormDialog } from "@/features/umkm/components/umkm-form-dialog";
 import { displayText, formatCoordinates } from "@/features/umkm/format";
 import type { Umkm } from "@/features/umkm/types";
 import type { ActionState } from "@/lib/http/run-action";
 
 type View = "umkm" | "admin";
-type StatusTab = "all" | "estimated" | "verified";
+type StatusTab = "all";
 
 const PAGE_SIZE = 8;
 const initialState: ActionState = { success: false, message: "" };
@@ -27,6 +26,7 @@ interface AdminDashboardProps {
   adminList?: AdminUser[];
   configured: boolean;
   adminEmail?: string;
+  canManageAdmins?: boolean;
 }
 
 function initials(name: string) {
@@ -130,7 +130,7 @@ function DeleteDialog({ item, onClose }: { item: Umkm; onClose: () => void }) {
   );
 }
 
-export function AdminDashboard({ items, adminList = [], configured, adminEmail }: AdminDashboardProps) {
+export function AdminDashboard({ items, adminList = [], configured, adminEmail, canManageAdmins = false }: AdminDashboardProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [view, setView] = useState<View>("umkm");
@@ -143,18 +143,14 @@ export function AdminDashboard({ items, adminList = [], configured, adminEmail }
   const [addAdminOpen, setAddAdminOpen] = useState(false);
   const [adminMessage, setAdminMessage] = useState("");
 
-  const verifiedCount = items.filter((item) => item.locationStatus === "verified").length;
-  const estimatedCount = items.filter((item) => item.locationStatus === "estimated").length;
-  const outsideCount = items.filter((item) => item.locationStatus === "outside").length;
 
   const filteredItems = useMemo(() => {
     const normalized = query.toLocaleLowerCase("id-ID").trim();
     return items.filter((item) => {
       const matchesQuery = !normalized || `${item.brand} ${item.ownerName} ${item.products} ${item.address}`.toLocaleLowerCase("id-ID").includes(normalized);
-      const matchesTab = tab === "all" || item.locationStatus === tab;
-      return matchesQuery && matchesTab;
+      return matchesQuery;
     });
-  }, [items, query, tab]);
+  }, [items, query]);
 
   const pageCount = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
@@ -174,8 +170,8 @@ export function AdminDashboard({ items, adminList = [], configured, adminEmail }
 
   function exportReview() {
     const rows = [
-      ["ID", "Merek", "Pemilik", "Kategori", "Alamat", "Produk", "Latitude", "Longitude", "Status"],
-      ...items.map((item) => [item.id, item.brand, item.ownerName, item.subCategory, item.address, item.products, item.latitude, item.longitude, item.locationStatus]),
+      ["ID", "Merek", "Pemilik", "Kategori", "Alamat", "Produk", "Latitude", "Longitude"],
+      ...items.map((item) => [item.id, item.brand, item.ownerName, item.subCategory, item.address, item.products, item.latitude, item.longitude]),
     ];
     const csv = rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
@@ -194,8 +190,6 @@ export function AdminDashboard({ items, adminList = [], configured, adminEmail }
 
   const tabs: { key: StatusTab; label: string; count: number }[] = [
     { key: "all", label: "Semua", count: items.length },
-    { key: "estimated", label: "Perlu verifikasi", count: estimatedCount },
-    { key: "verified", label: "Terverifikasi", count: verifiedCount },
   ];
   const railItems = [
     { label: "Data UMKM", icon: "dashboard", active: view === "umkm", onClick: () => setView("umkm") },
@@ -229,11 +223,8 @@ export function AdminDashboard({ items, adminList = [], configured, adminEmail }
 
           {view === "umkm" ? (
             <>
-              <div className="admin-stats">
+              <div className="admin-stats" style={{ gridTemplateColumns: "1fr" }}>
                 <StatTile label="Total" value={items.length} icon={Store} />
-                <StatTile label="Perlu verifikasi" value={estimatedCount} icon={TriangleAlert} />
-                <StatTile label="Terverifikasi" value={verifiedCount} icon={CircleCheck} />
-                <StatTile label="Di luar desa" value={outsideCount} icon={MapPin} />
               </div>
 
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -262,7 +253,6 @@ export function AdminDashboard({ items, adminList = [], configured, adminEmail }
                         <th>Kategori</th>
                         <th>Produk</th>
                         <th>Koordinat</th>
-                        <th>Status</th>
                         <th />
                       </tr>
                     </thead>
@@ -276,7 +266,6 @@ export function AdminDashboard({ items, adminList = [], configured, adminEmail }
                           <td><span className="bdg sec">{item.subCategory}</span></td>
                           <td className="mut ell" style={{ maxWidth: 220 }}>{displayText(item.products, "sentence")}</td>
                           <td className="mono mut" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>{formatCoordinates(item.latitude, item.longitude)}</td>
-                          <td><StatusBadge status={item.locationStatus} /></td>
                           <td>
                             <div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
                               <button type="button" className="btn ic sm g" aria-label={`Ubah ${displayText(item.brand)}`} title="Ubah" disabled={!configured} onClick={() => setEditing(item)}>
@@ -290,7 +279,7 @@ export function AdminDashboard({ items, adminList = [], configured, adminEmail }
                         </tr>
                       ))}
                       {pageItems.length === 0 && (
-                        <tr><td colSpan={6} className="mut" style={{ textAlign: "center", padding: 32 }}>Tidak ada UMKM yang cocok.</td></tr>
+                        <tr><td colSpan={5} className="mut" style={{ textAlign: "center", padding: 32 }}>Tidak ada UMKM yang cocok.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -309,7 +298,7 @@ export function AdminDashboard({ items, adminList = [], configured, adminEmail }
             <>
               <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
                 {adminMessage && <span className="mut" role="status">{adminMessage}</span>}
-                <button type="button" className="btn" disabled={!configured} onClick={() => setAddAdminOpen(true)}>
+                <button type="button" className="btn" disabled={!configured || !canManageAdmins} onClick={() => setAddAdminOpen(true)}>
                   <UserPlus className="i" />Tambah admin
                 </button>
               </div>
@@ -336,10 +325,10 @@ export function AdminDashboard({ items, adminList = [], configured, adminEmail }
                               </div>
                             </td>
                             <td className="mut">{admin.email}</td>
-                            <td><span className={`bdg ${admin.isActive ? "out" : "sec"}`}>{admin.isActive ? "Admin" : "Nonaktif"}</span></td>
+                            <td><span className={`bdg ${admin.isActive ? "out" : "sec"}`}>{admin.isActive ? (admin.role === "superadmin" ? "Superadmin" : "Admin") : "Nonaktif"}</span></td>
                             <td>
                               <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                                {!isSelf && (
+                                {canManageAdmins && !isSelf && (
                                   <button type="button" className="btn ic sm g" aria-label={admin.isActive ? `Nonaktifkan ${admin.fullName}` : `Aktifkan ${admin.fullName}`} title={admin.isActive ? "Nonaktifkan" : "Aktifkan"} onClick={() => toggleAdmin(admin)}>
                                     <Power className="i sm" />
                                   </button>

@@ -5,7 +5,7 @@ import { Map as MapLibreMap, Marker, setWorkerUrl } from "maplibre-gl";
 import { Minus, Plus } from "lucide-react";
 import { applyMapPalette, MAP_STYLE_URL } from "@/features/map/map-style";
 import { categoryIconSvg, CATEGORY_CONFIG } from "@/features/umkm/categories";
-import type { LocationStatus, UmkmSubCategory } from "@/features/umkm/types";
+import type { UmkmSubCategory } from "@/features/umkm/types";
 import { useTheme } from "@/lib/theme/use-theme";
 
 // Copied to public/ by scripts/copy-maplibre-worker.mjs.
@@ -17,18 +17,17 @@ interface CoordinatePickerProps {
   latitude: number;
   longitude: number;
   subCategory: UmkmSubCategory;
-  locationStatus: LocationStatus;
   onChange: (latitude: number, longitude: number) => void;
 }
 
-function applyPinStyle(element: HTMLElement, subCategory: UmkmSubCategory, locationStatus: LocationStatus) {
-  element.className = `pin ${CATEGORY_CONFIG[subCategory].pinClass}${locationStatus === "verified" ? "" : " est"} sel`;
+function applyPinStyle(element: HTMLElement, subCategory: UmkmSubCategory) {
+  element.className = `pin ${CATEGORY_CONFIG[subCategory].pinClass} sel`;
   element.innerHTML = categoryIconSvg(subCategory);
   element.querySelector("svg")?.setAttribute("style", "width:22px;height:22px");
 }
 
 /** Map where the admin clicks or drags the draggable pin to set the coordinates of a UMKM. */
-export function CoordinatePicker({ latitude, longitude, subCategory, locationStatus, onChange }: CoordinatePickerProps) {
+export function CoordinatePicker({ latitude, longitude, subCategory, onChange }: CoordinatePickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markerRef = useRef<Marker | null>(null);
@@ -83,8 +82,8 @@ export function CoordinatePicker({ latitude, longitude, subCategory, locationSta
   }, []);
 
   useEffect(() => {
-    if (pinRef.current) applyPinStyle(pinRef.current, subCategory, locationStatus);
-  }, [subCategory, locationStatus]);
+    if (pinRef.current) applyPinStyle(pinRef.current, subCategory);
+  }, [subCategory]);
 
   useEffect(() => {
     markerRef.current?.setLngLat([longitude, latitude]);
