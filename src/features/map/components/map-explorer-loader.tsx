@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+
 import type { Umkm } from "@/features/umkm/types";
 
 // The explorer restores the last map view from sessionStorage when it is created,

@@ -1,5 +1,6 @@
 import type { Umkm } from "@/features/umkm/types";
 import type { Theme } from "@/lib/theme/use-theme";
+
 export interface MapControls {
   zoomIn: () => void;
   zoomOut: () => void;
@@ -37,15 +38,16 @@ export interface UmkmMapProps {
   };
   theme?: Theme;
   onSelect: (id: string) => void;
-  onViewportChange: (viewport: {
-    center: { latitude: number; longitude: number };
-    zoom: number;
-    bounds: { north: number; south: number; east: number; west: number };
-  }, userInitiated: boolean) => void;
-  onMovingChange: (moving: boolean) => void;
+  onViewportChange: (
+    viewport: {
+      center: { latitude: number; longitude: number };
+      zoom: number;
+      bounds: { north: number; south: number; east: number; west: number };
+    },
+    isUserInitiated: boolean,
+  ) => void;
+  onMovingChange: (isMoving: boolean) => void;
   onZoomRadiusChange?: (radiusKm: number) => void;
   onUserZoom?: (visibleRadiusKm: number) => void;
   onReady?: (controls: MapControls) => void;
 }
-
-

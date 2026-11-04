@@ -1,11 +1,13 @@
 import "server-only";
+
 import { ownerKeyStatus, type OwnerKeySummary } from "@/features/owner/types";
 import { ApiResponse } from "@/lib/http/api-response";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const KEY_COLUMNS = "id,key_hint,umkm_id,owner_label,expires_at,revoked_at,last_used_at,created_at,umkm(name)";
+const KEY_COLUMNS =
+  "id,key_hint,umkm_id,owner_label,expires_at,revoked_at,last_used_at,created_at,umkm(name)";
 
 export interface OwnerKeyRow {
   id: string;
@@ -19,6 +21,7 @@ export interface OwnerKeyRow {
   umkm?: { name: string } | { name: string }[] | null;
 }
 
+/** Map a stored key to its safe dashboard representation without exposing its hash. */
 export function toOwnerKeySummary(row: OwnerKeyRow): OwnerKeySummary {
   const relation = Array.isArray(row.umkm) ? row.umkm[0] : row.umkm;
 
@@ -32,7 +35,11 @@ export function toOwnerKeySummary(row: OwnerKeyRow): OwnerKeySummary {
     revokedAt: row.revoked_at,
     lastUsedAt: row.last_used_at,
     createdAt: row.created_at,
-    status: ownerKeyStatus({ revokedAt: row.revoked_at, expiresAt: row.expires_at, lastUsedAt: row.last_used_at }),
+    status: ownerKeyStatus({
+      revokedAt: row.revoked_at,
+      expiresAt: row.expires_at,
+      lastUsedAt: row.last_used_at,
+    }),
   };
 }
 
@@ -43,7 +50,9 @@ export interface OwnerKeyListResult {
 
 /** Every owner key, newest first, read with the admin's own session so row-level security applies. */
 export async function listOwnerKeys(): Promise<OwnerKeyListResult> {
-  if (!isSupabaseConfigured()) return { items: [] };
+  if (!isSupabaseConfigured()) {
+    return { items: [] };
+  }
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -51,7 +60,9 @@ export async function listOwnerKeys(): Promise<OwnerKeyListResult> {
     .select(KEY_COLUMNS)
     .order("created_at", { ascending: false });
 
-  if (error) return { items: [], error: `Kunci akses gagal dimuat: ${error.message}` };
+  if (error) {
+    return { items: [], error: `Kunci akses gagal dimuat: ${error.message}` };
+  }
 
   return { items: (data as unknown as OwnerKeyRow[]).map(toOwnerKeySummary) };
 }
@@ -64,8 +75,13 @@ export async function getOwnerKeyById(id: string): Promise<OwnerKeyRow> {
     .eq("id", id)
     .maybeSingle();
 
-  if (error) throw new ApiResponse(500, `Kunci gagal dimuat: ${error.message}`);
-  if (!data) throw new ApiResponse(404, "Kunci tidak ditemukan.");
+  if (error) {
+    throw new ApiResponse(500, `Kunci gagal dimuat: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new ApiResponse(404, "Kunci tidak ditemukan.");
+  }
 
   return data as unknown as OwnerKeyRow;
 }
@@ -78,7 +94,9 @@ export async function findOwnerKeyByHash(hash: string): Promise<OwnerKeyRow | nu
     .eq("key_hash", hash)
     .maybeSingle();
 
-  if (error) throw new ApiResponse(500, `Kunci gagal diperiksa: ${error.message}`);
+  if (error) {
+    throw new ApiResponse(500, `Kunci gagal diperiksa: ${error.message}`);
+  }
 
   return (data as unknown as OwnerKeyRow | null) ?? null;
 }

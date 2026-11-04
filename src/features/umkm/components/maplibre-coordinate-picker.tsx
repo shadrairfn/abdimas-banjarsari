@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Map as MapLibreMap, Marker, setWorkerUrl } from "maplibre-gl";
 import { Minus, Plus } from "lucide-react";
+import { Map as MapLibreMap, Marker, setWorkerUrl } from "maplibre-gl";
+import { useEffect, useRef } from "react";
+
 import { applyMapPalette, MAP_STYLE_URL } from "@/features/map/map-style";
-import { categoryIconSvg, CATEGORY_CONFIG } from "@/features/umkm/categories";
+import { CATEGORY_CONFIG, categoryIconSvg } from "@/features/umkm/categories";
 import type { UmkmSubCategory } from "@/features/umkm/types";
 import { useTheme } from "@/lib/theme/use-theme";
 
@@ -27,7 +28,12 @@ function applyPinStyle(element: HTMLElement, subCategory: UmkmSubCategory) {
 }
 
 /** Map where the admin clicks or drags the draggable pin to set the coordinates of a UMKM. */
-export function MapLibreCoordinatePicker({ latitude, longitude, subCategory, onChange }: CoordinatePickerProps) {
+export function MapLibreCoordinatePicker({
+  latitude,
+  longitude,
+  subCategory,
+  onChange,
+}: CoordinatePickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markerRef = useRef<Marker | null>(null);
@@ -37,15 +43,22 @@ export function MapLibreCoordinatePicker({ latitude, longitude, subCategory, onC
   const { theme } = useTheme();
   const themeRef = useRef(theme);
 
-  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     themeRef.current = theme;
-    if (mapRef.current?.isStyleLoaded()) applyMapPalette(mapRef.current, theme);
+    if (mapRef.current?.isStyleLoaded()) {
+      applyMapPalette(mapRef.current, theme);
+    }
   }, [theme]);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    if (!containerRef.current || mapRef.current) {
+      return;
+    }
+
     const map = new MapLibreMap({
       container: containerRef.current,
       style: MAP_STYLE_URL,
@@ -73,6 +86,7 @@ export function MapLibreCoordinatePicker({ latitude, longitude, subCategory, onC
 
     mapRef.current = map;
     markerRef.current = marker;
+
     return () => {
       map.remove();
       mapRef.current = null;
@@ -82,7 +96,9 @@ export function MapLibreCoordinatePicker({ latitude, longitude, subCategory, onC
   }, []);
 
   useEffect(() => {
-    if (pinRef.current) applyPinStyle(pinRef.current, subCategory);
+    if (pinRef.current) {
+      applyPinStyle(pinRef.current, subCategory);
+    }
   }, [subCategory]);
 
   useEffect(() => {
@@ -94,17 +110,42 @@ export function MapLibreCoordinatePicker({ latitude, longitude, subCategory, onC
   }, [latitude, longitude]);
 
   return (
-    <div className="loc-map picker" data-map-provider="maplibre" aria-label="Pilih titik lokasi UMKM">
+    <div
+      className="loc-map picker"
+      data-map-provider="maplibre"
+      aria-label="Pilih titik lokasi UMKM"
+    >
       <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
-      <div className="fcard" style={{ position: "absolute", right: 8, top: 8, display: "flex", flexDirection: "column", zIndex: 5 }}>
-        <button type="button" className="btn ic sm g" aria-label="Perbesar" title="Perbesar" onClick={() => mapRef.current?.zoomIn()}>
+      <div
+        className="fcard"
+        style={{
+          position: "absolute",
+          right: 8,
+          top: 8,
+          display: "flex",
+          flexDirection: "column",
+          zIndex: 5,
+        }}
+      >
+        <button
+          type="button"
+          className="btn ic sm g"
+          aria-label="Perbesar"
+          title="Perbesar"
+          onClick={() => mapRef.current?.zoomIn()}
+        >
           <Plus className="i sm" />
         </button>
-        <button type="button" className="btn ic sm g" aria-label="Perkecil" title="Perkecil" onClick={() => mapRef.current?.zoomOut()}>
+        <button
+          type="button"
+          className="btn ic sm g"
+          aria-label="Perkecil"
+          title="Perkecil"
+          onClick={() => mapRef.current?.zoomOut()}
+        >
           <Minus className="i sm" />
         </button>
       </div>
     </div>
   );
 }
-

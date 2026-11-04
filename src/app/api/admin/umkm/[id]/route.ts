@@ -3,7 +3,7 @@ import { idSchema } from "@/features/umkm/validation";
 import { requireAdmin } from "@/lib/auth/admin";
 import { asyncHandler } from "@/lib/http/async-handler";
 import { parseInput } from "@/lib/http/parse-input";
-import { SuccessResponse, sendSuccess } from "@/lib/http/success-response";
+import { sendSuccess, SuccessResponse } from "@/lib/http/success-response";
 
 /**
  * Delete one UMKM. Admin only; the deletion is written to the activity log.

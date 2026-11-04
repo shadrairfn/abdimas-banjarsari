@@ -1,0 +1,3 @@
+export const MAX_CATALOG_PRODUCTS = 50;
+export const MAX_PRODUCT_NAME_LENGTH = 120;
+export const MAX_PRODUCT_PRICE = 1_000_000_000_000;

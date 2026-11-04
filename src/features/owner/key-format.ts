@@ -6,11 +6,13 @@ const GROUP_SIZE = 4;
 export function suggestKey() {
   const bytes = crypto.getRandomValues(new Uint8Array(GROUP_SIZE * 2));
   const characters = Array.from(bytes, (byte) => KEY_ALPHABET[byte % KEY_ALPHABET.length]);
+
   return `BNJ-${characters.slice(0, GROUP_SIZE).join("")}-${characters.slice(GROUP_SIZE).join("")}`;
 }
 
 /** Message an admin sends to the owner together with the key. */
 export function inviteMessage(ownerLabel: string, key: string, origin: string) {
   const greeting = ownerLabel ? `Halo ${ownerLabel}` : "Halo";
-  return `${greeting}, ini kunci akses untuk mengisi atau mengubah data usaha Anda di Peta UMKM Banjarsari.\n\nBuka: ${origin}/pemilik\nKunci: ${key}\n\nJangan bagikan kunci ini kepada orang lain.`;
+
+  return `${greeting}, ini kunci akses untuk mengisi atau mengubah data usaha Anda di UMKM Banjarsari Banjarsari.\n\nBuka: ${origin}/pemilik\nKunci: ${key}\n\nJangan bagikan kunci ini kepada orang lain.`;
 }

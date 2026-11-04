@@ -1,7 +1,10 @@
 import "server-only";
+
 import { createClient } from "@supabase/supabase-js";
+
 import { ApiResponse } from "@/lib/http/api-response";
 
+/** Check whether privileged server operations have a configured service credential. */
 export function isServiceRoleConfigured() {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
@@ -16,7 +19,10 @@ export function createSupabaseAdminClient() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serviceRoleKey) {
-    throw new ApiResponse(500, "SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di environment server.");
+    throw new ApiResponse(
+      500,
+      "SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di environment server.",
+    );
   }
 
   return createClient(url, serviceRoleKey, {

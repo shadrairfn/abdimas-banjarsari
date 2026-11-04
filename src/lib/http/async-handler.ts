@@ -1,5 +1,4 @@
 import { ApiResponse } from "@/lib/http/api-response";
-import { auditFailure } from "@/lib/audit-failure";
 
 const INTERNAL_ERROR_MESSAGE = "Terjadi kesalahan pada server.";
 
@@ -45,7 +44,6 @@ export function asyncHandler<Req extends Request, Context = unknown>(
     try {
       return await handler(request, context);
     } catch (error) {
-      await auditFailure(error instanceof ApiResponse ? error.statusCode : 500, error instanceof ApiResponse ? error.message : "Kesalahan layanan");
       return errorHandler(error);
     }
   };

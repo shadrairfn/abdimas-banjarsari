@@ -25,6 +25,7 @@ function isNumber(value: unknown): value is number {
 
 function isCoordinates(value: unknown): value is { latitude: number; longitude: number } {
   const candidate = value as { latitude?: unknown; longitude?: unknown } | null;
+
   return Boolean(candidate) && isNumber(candidate?.latitude) && isNumber(candidate?.longitude);
 }
 
@@ -36,11 +37,15 @@ function isCamera(value: unknown): value is MapCamera {
 export function loadMapView(): SavedMapView | null {
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
+    if (!raw) {
+      return null;
+    }
 
     const value = JSON.parse(raw) as Partial<SavedMapView>;
     const isAreaValid = typeof value.area === "number" || typeof value.area === "string";
-    if (!isCoordinates(value.center) || !isAreaValid) return null;
+    if (!isCoordinates(value.center) || !isAreaValid) {
+      return null;
+    }
 
     return {
       query: typeof value.query === "string" ? value.query : "",
@@ -57,6 +62,7 @@ export function loadMapView(): SavedMapView | null {
   }
 }
 
+/** Persist the current map camera and filters for return navigation and refresh. */
 export function saveMapView(view: SavedMapView) {
   try {
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(view));

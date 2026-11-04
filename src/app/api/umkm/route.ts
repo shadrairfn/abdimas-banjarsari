@@ -1,15 +1,19 @@
 import type { NextRequest } from "next/server";
+
 import { listUmkm } from "@/data/umkm-repository";
 import { filterUmkm } from "@/features/umkm/search";
 import { asyncHandler } from "@/lib/http/async-handler";
-import { SuccessResponse, sendSuccess } from "@/lib/http/success-response";
+import { sendSuccess, SuccessResponse } from "@/lib/http/success-response";
 
 // A missing or non-numeric parameter means "not provided", never 0.
 function readNumberParam(searchParams: URLSearchParams, name: string) {
   const raw = searchParams.get(name);
-  if (raw === null || raw.trim() === "") return null;
+  if (raw === null || raw.trim() === "") {
+    return null;
+  }
 
   const value = Number(raw);
+
   return Number.isFinite(value) ? value : null;
 }
 
@@ -31,7 +35,6 @@ export const GET = asyncHandler(async (request: NextRequest) => {
     center: hasCenter ? { latitude, longitude } : null,
     radiusKm: readNumberParam(searchParams, "radius"),
   });
-
 
   const responseData = {
     items,

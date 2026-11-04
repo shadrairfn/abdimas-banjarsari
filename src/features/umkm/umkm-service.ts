@@ -1,11 +1,13 @@
 import "server-only";
+
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import { UMKM_COLUMNS, toPublicUmkm, type DatabaseUmkm } from "@/data/umkm-repository";
+
+import { type DatabaseUmkm, toPublicUmkm, UMKM_COLUMNS } from "@/data/umkm-repository";
 import { diffUmkm, summarizeChanges } from "@/features/activity/diff";
 import { villageName } from "@/features/umkm/format";
 import type { Umkm } from "@/features/umkm/types";
 import type { UmkmInput } from "@/features/umkm/validation";
-import { logActivity, type ActivityEntry } from "@/lib/activity-log";
+import { type ActivityEntry, logActivity } from "@/lib/activity-log";
 import { ApiResponse } from "@/lib/http/api-response";
 import { revalidateUmkmPages } from "@/lib/revalidate";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
@@ -15,11 +17,17 @@ export type UmkmActor =
   | { type: "admin" | "superadmin"; id: string; name: string }
   | { type: "owner"; keyId: string; keyHint: string; name: string; umkmId: string | null };
 
-
-
-export function adminActor(user: User & { adminRole?: "superadmin" | "admin"; profileName?: string }): Extract<UmkmActor, { type: "admin" | "superadmin" }> {
+/** Create an audit actor from the trusted server-side admin profile and role. */
+export function adminActor(
+  user: User & { adminRole?: "superadmin" | "admin"; profileName?: string },
+): Extract<UmkmActor, { type: "admin" | "superadmin" }> {
   const fullName = user.profileName || user.user_metadata?.full_name;
-  return { type: user.adminRole ?? "admin", id: user.id, name: typeof fullName === "string" && fullName ? fullName : (user.email ?? "Admin") };
+
+  return {
+    type: user.adminRole ?? "admin",
+    id: user.id,
+    name: typeof fullName === "string" && fullName ? fullName : (user.email ?? "Admin"),
+  };
 }
 
 function logActor(actor: UmkmActor): ActivityEntry["actor"] {
@@ -32,18 +40,31 @@ function umkmSub(item: Pick<Umkm, "address">) {
   return `UMKM · ${villageName(item.address)}`;
 }
 
-async function fetchUmkm(db: SupabaseClient, id: string) {
-  const { data, error } = await db.from("umkm").select(UMKM_COLUMNS).eq("id", id).maybeSingle();
+async function fetchUmkm(databaseClient: SupabaseClient, id: string) {
+  const { data, error } = await databaseClient
+    .from("umkm")
+    .select(UMKM_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
 
-  if (error) throw new ApiResponse(500, `Gagal memuat data UMKM: ${error.message}`);
+  if (error) {
+    throw new ApiResponse(500, `Gagal memuat data UMKM: ${error.message}`);
+  }
 
   return data ? toPublicUmkm(data as unknown as DatabaseUmkm) : undefined;
 }
 
-async function findCategoryId(db: SupabaseClient, name: string) {
-  const { data, error } = await db.from("categories").select("id").eq("name", name).eq("is_active", true).single();
+async function findCategoryId(databaseClient: SupabaseClient, name: string) {
+  const { data, error } = await databaseClient
+    .from("categories")
+    .select("id")
+    .eq("name", name)
+    .eq("is_active", true)
+    .single();
 
-  if (error || !data) throw new ApiResponse(404, "Kategori tidak ditemukan.");
+  if (error || !data) {
+    throw new ApiResponse(404, "Kategori tidak ditemukan.");
+  }
 
   return data.id as string;
 }
@@ -53,17 +74,25 @@ async function findCategoryId(db: SupabaseClient, name: string) {
  * an owner only ever edits the UMKM of the key. Writes the change to the activity log.
  * @throws {ApiResponse} 404 unknown category or UMKM, 500 if the database fails
  */
-export async function saveUmkm(db: SupabaseClient, actor: UmkmActor, input: UmkmInput) {
-  const categoryId = await findCategoryId(db, input.subCategory);
+export async function saveUmkm(databaseClient: SupabaseClient, actor: UmkmActor, input: UmkmInput) {
+  const categoryId = await findCategoryId(databaseClient, input.subCategory);
   const targetId = actor.type === "owner" ? actor.umkmId : input.id || null;
-  const before = targetId ? await fetchUmkm(db, targetId) : undefined;
+  const before = targetId ? await fetchUmkm(databaseClient, targetId) : undefined;
 
-  if (targetId && !before) throw new ApiResponse(404, "UMKM tidak ditemukan.");
+  if (targetId && !before) {
+    throw new ApiResponse(404, "UMKM tidak ditemukan.");
+  }
 
   const record = {
     name: input.name,
     owner_name: input.ownerName || null,
-    products: input.products || input.catalog.map(product => product.name).join(", ").slice(0, 500) || null,
+    products:
+      input.products ||
+      input.catalog
+        .map((product) => product.name)
+        .join(", ")
+        .slice(0, 500) ||
+      null,
     address: input.address || null,
     category_id: categoryId,
     latitude: input.latitude,
@@ -84,11 +113,13 @@ export async function saveUmkm(db: SupabaseClient, actor: UmkmActor, input: Umkm
   };
 
   const query = targetId
-    ? db.from("umkm").update(record).eq("id", targetId)
-    : db.from("umkm").insert(record);
+    ? databaseClient.from("umkm").update(record).eq("id", targetId)
+    : databaseClient.from("umkm").insert(record);
   const { data, error } = await query.select(UMKM_COLUMNS).single();
 
-  if (error) throw new ApiResponse(500, error.message);
+  if (error) {
+    throw new ApiResponse(500, error.message);
+  }
 
   const after = toPublicUmkm(data as unknown as DatabaseUmkm);
 
@@ -109,36 +140,70 @@ async function linkKeyToUmkm(keyId: string, umkmId: string) {
 
   if (error) {
     await admin.from("umkm").delete().eq("id", umkmId);
+
     throw new ApiResponse(500, `Kunci gagal dihubungkan ke usaha: ${error.message}`);
   }
 }
 
 async function recordSave(actor: UmkmActor, before: Umkm | undefined, after: Umkm) {
-  const base = { entityType: "umkm" as const, entityId: after.id, entityLabel: after.brand, entitySub: umkmSub(after), actor: logActor(actor) };
+  const base = {
+    entityType: "umkm" as const,
+    entityId: after.id,
+    entityLabel: after.brand,
+    entitySub: umkmSub(after),
+    actor: logActor(actor),
+  };
 
   if (!before) {
-    const by = actor.type === "owner" ? "oleh pemilik" : actor.type === "superadmin" ? "oleh Superadmin" : "oleh Admin";
+    const actorLabels = {
+      owner: "oleh pemilik",
+      superadmin: "oleh Superadmin",
+      admin: "oleh Admin",
+    };
+    const by = actorLabels[actor.type];
     await logActivity({ ...base, action: "create", summary: `UMKM baru ditambahkan ${by}` });
+
     return;
   }
 
   const changes = diffUmkm(before, after);
-  await logActivity({ ...base, action: "update", summary: changes.length ? summarizeChanges(changes) : "Data disimpan tanpa perubahan", changes });
+  if (changes.length === 0) {
+    return;
+  }
+
+  await logActivity({
+    ...base,
+    action: "update",
+    summary: summarizeChanges(changes),
+    changes,
+  });
 }
 
 /**
  * Delete one UMKM and log it. Admin only; owners can never delete.
  * @throws {ApiResponse} 404 if the UMKM does not exist, 500 if the database fails
  */
-export async function deleteUmkm(db: SupabaseClient, actor: UmkmActor, id: string) {
-  const before = await fetchUmkm(db, id);
+export async function deleteUmkm(databaseClient: SupabaseClient, actor: UmkmActor, id: string) {
+  const before = await fetchUmkm(databaseClient, id);
 
-  if (!before) throw new ApiResponse(404, "UMKM tidak ditemukan.");
+  if (!before) {
+    throw new ApiResponse(404, "UMKM tidak ditemukan.");
+  }
 
-  const { data, error } = await db.from("umkm").delete().eq("id", id).select("id").maybeSingle();
+  const { data, error } = await databaseClient
+    .from("umkm")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
 
-  if (error) throw new ApiResponse(500, `UMKM gagal dihapus: ${error.message}`);
-  if (!data) throw new ApiResponse(404, "UMKM tidak ditemukan.");
+  if (error) {
+    throw new ApiResponse(500, `UMKM gagal dihapus: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new ApiResponse(404, "UMKM tidak ditemukan.");
+  }
 
   await logActivity({
     action: "delete",

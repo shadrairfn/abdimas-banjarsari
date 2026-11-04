@@ -18,5 +18,9 @@ export class SuccessResponse<T = null> {
 
 /** Turn a SuccessResponse into the HTTP response of a route handler. */
 export function sendSuccess<T>(response: SuccessResponse<T>): Response {
+  if (response.statusCode === 204) {
+    return new Response(null, { status: response.statusCode });
+  }
+
   return Response.json(response, { status: response.statusCode });
 }

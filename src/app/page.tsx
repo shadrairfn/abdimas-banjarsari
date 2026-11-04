@@ -8,5 +8,6 @@ export default async function Home({
 }) {
   const { selected } = await searchParams;
   const items = await listUmkm();
+
   return <MapExplorerLoader initialItems={items} initialSelectedId={selected} />;
 }

@@ -1,4 +1,5 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
+
 import type { Theme } from "@/lib/theme/use-theme";
 
 // Free vector basemap (OpenStreetMap data); every colour is replaced below to follow the design tokens.
@@ -42,6 +43,7 @@ const PALETTES: Record<Theme, MapPalette> = {
   },
 };
 
+/** Read the search-radius highlight color from the selected map theme. */
 export function getRingColor(theme: Theme) {
   return PALETTES[theme].ring;
 }
@@ -67,24 +69,50 @@ export function applyMapPalette(map: MapLibreMap, theme: Theme) {
   paint(map, "building", "fill-color", palette.land);
   paint(map, "building", "fill-outline-color", palette.roadCasing);
 
-  for (const id of ["highway_path", "highway_minor", "highway_major_inner", "highway_major_subtle"]) {
+  for (const id of [
+    "highway_path",
+    "highway_minor",
+    "highway_major_inner",
+    "highway_major_subtle",
+  ]) {
     paint(map, id, "line-color", palette.road);
   }
+
   paint(map, "highway_major_casing", "line-color", palette.roadCasing);
 
-  for (const id of ["highway_motorway_inner", "highway_motorway_bridge_inner", "tunnel_motorway_inner", "highway_motorway_subtle"]) {
+  for (const id of [
+    "highway_motorway_inner",
+    "highway_motorway_bridge_inner",
+    "tunnel_motorway_inner",
+    "highway_motorway_subtle",
+  ]) {
     paint(map, id, "line-color", palette.mainRoad);
   }
-  for (const id of ["highway_motorway_casing", "highway_motorway_bridge_casing", "tunnel_motorway_casing"]) {
+
+  for (const id of [
+    "highway_motorway_casing",
+    "highway_motorway_bridge_casing",
+    "tunnel_motorway_casing",
+  ]) {
     paint(map, id, "line-color", palette.mainRoadCasing);
   }
 
-  for (const id of ["railway", "railway_service", "railway_transit", "boundary_2", "boundary_3", "boundary_disputed"]) {
+  for (const id of [
+    "railway",
+    "railway_service",
+    "railway_transit",
+    "boundary_2",
+    "boundary_3",
+    "boundary_disputed",
+  ]) {
     paint(map, id, "line-color", palette.roadCasing);
   }
 
   for (const layer of map.getStyle().layers) {
-    if (layer.type !== "symbol") continue;
+    if (layer.type !== "symbol") {
+      continue;
+    }
+
     paint(map, layer.id, "text-color", palette.text);
     paint(map, layer.id, "text-halo-color", palette.land);
   }

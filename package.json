@@ -6,9 +6,12 @@
     "dev": "node scripts/copy-maplibre-worker.mjs && next dev",
     "build": "node scripts/copy-maplibre-worker.mjs && next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint src scripts",
     "seed:supabase": "node scripts/seed-supabase.mjs",
-    "seed:admin": "node scripts/seed-admin.mjs"
+    "seed:admin": "node scripts/seed-admin.mjs",
+    "lint:fix": "eslint src scripts --fix",
+    "format": "prettier --ignore-path .prettierignore --write src scripts *.mjs *.ts *.json",
+    "format:check": "prettier --ignore-path .prettierignore --check src scripts *.mjs *.ts *.json"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -29,6 +32,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-simple-import-sort": "14.0.0",
+    "prettier": "3.9.10",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

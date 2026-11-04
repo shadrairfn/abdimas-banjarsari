@@ -1,3 +1,5 @@
+import type { DataActionState } from "@/lib/http/run-action";
+
 export type OwnerKeyStatus = "active" | "pending" | "revoked" | "expired";
 
 export const OWNER_KEY_STATUS_LABELS: Record<OwnerKeyStatus, string> = {
@@ -30,9 +32,19 @@ export const OWNER_KEY_EXPIRY_OPTIONS = [
 
 export type OwnerKeyExpiryValue = (typeof OWNER_KEY_EXPIRY_OPTIONS)[number]["value"];
 
-export function ownerKeyStatus(key: { revokedAt: string | null; expiresAt: string | null; lastUsedAt: string | null }, now = Date.now()): OwnerKeyStatus {
-  if (key.revokedAt) return "revoked";
-  if (key.expiresAt && new Date(key.expiresAt).getTime() <= now) return "expired";
+/** Derive the displayed key status from revocation, expiry, and first-use timestamps. */
+export function ownerKeyStatus(
+  key: { revokedAt: string | null; expiresAt: string | null; lastUsedAt: string | null },
+  now = Date.now(),
+): OwnerKeyStatus {
+  if (key.revokedAt) {
+    return "revoked";
+  }
+
+  if (key.expiresAt && new Date(key.expiresAt).getTime() <= now) {
+    return "expired";
+  }
+
   return key.lastUsedAt ? "active" : "pending";
 }
 
@@ -40,3 +52,14 @@ export function ownerKeyStatus(key: { revokedAt: string | null; expiresAt: strin
 export function maskedKey(hint: string) {
   return `${hint}-••••`;
 }
+
+/** Plaintext key returned once after creation; only its hash and hint are stored. */
+export interface IssuedKey {
+  id: string;
+  key: string;
+  hint: string;
+  ownerLabel: string;
+  umkmName: string;
+  expiresAt: string | null;
+}
+export type IssueKeyState = DataActionState<IssuedKey>;

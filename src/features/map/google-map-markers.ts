@@ -4,6 +4,7 @@ import type { Umkm } from "@/features/umkm/types";
 
 export type MapPinItem = Pick<Umkm, "latitude" | "longitude" | "subCategory">;
 
+/** Build an accessible marker element using the existing category styles. */
 export function createGooglePin(item: MapPinItem, name?: string) {
   const element = document.createElement("div");
   element.className = "pin-marker google-pin";
@@ -17,15 +18,21 @@ export function createGooglePin(item: MapPinItem, name?: string) {
     label.textContent = displayText(name);
     element.append(label);
   }
+
   return element;
 }
 
-export function selectGooglePin(element: HTMLElement, selected: boolean) {
-  element.classList.toggle("is-selected", selected);
-  element.querySelector(".pin")?.classList.toggle("sel", selected);
-  element.setAttribute("aria-pressed", String(selected));
+/** Update the selected appearance of an existing marker without replacing it. */
+export function selectGooglePin(element: HTMLElement, isSelected: boolean) {
+  element.classList.toggle("is-selected", isSelected);
+  element.querySelector(".pin")?.classList.toggle("sel", isSelected);
+  element.setAttribute("aria-pressed", String(isSelected));
 }
 
-export function googlePosition(point: { latitude: number; longitude: number }): google.maps.LatLngLiteral {
+/** Translate the application coordinate model to the Google Maps position format. */
+export function googlePosition(point: {
+  latitude: number;
+  longitude: number;
+}): google.maps.LatLngLiteral {
   return { lat: point.latitude, lng: point.longitude };
 }

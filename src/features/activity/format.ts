@@ -10,14 +10,25 @@ const DATE_TIME = new Intl.DateTimeFormat("id-ID", {
   minute: "2-digit",
   hour12: false,
 });
-const DATE_ONLY = new Intl.DateTimeFormat("id-ID", { timeZone: TIME_ZONE, day: "numeric", month: "short", year: "numeric" });
-const TIME_ONLY = new Intl.DateTimeFormat("id-ID", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit", hour12: false });
+const DATE_ONLY = new Intl.DateTimeFormat("id-ID", {
+  timeZone: TIME_ZONE,
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+const TIME_ONLY = new Intl.DateTimeFormat("id-ID", {
+  timeZone: TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
 
 /** "3 Nov 2026, 14.20" */
 export function formatDateTime(iso: string) {
   return DATE_TIME.format(new Date(iso));
 }
 
+/** Format a stored date for the Indonesian dashboard display. */
 export function formatDate(iso: string) {
   return DATE_ONLY.format(new Date(iso));
 }

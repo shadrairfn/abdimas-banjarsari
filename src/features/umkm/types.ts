@@ -3,9 +3,14 @@ export type UmkmCategory = "Kuliner";
 export const UMKM_SUB_CATEGORIES = ["Camilan", "Makanan", "Minuman", "Kue & Roti"] as const;
 export type UmkmSubCategory = string;
 
-
-
-export const SOCIAL_PLATFORMS = ["Instagram", "TikTok", "Facebook", "YouTube", "Situs web", "Lainnya"] as const;
+export const SOCIAL_PLATFORMS = [
+  "Instagram",
+  "TikTok",
+  "Facebook",
+  "YouTube",
+  "Situs web",
+  "Lainnya",
+] as const;
 export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
 
 export interface SocialLink {

@@ -1,13 +1,13 @@
 "use client";
 
+import { CircleCheck, ExternalLink, KeyRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CircleCheck, ExternalLink, KeyRound } from "lucide-react";
+
 import { ownerSaveUmkmAction } from "@/app/pemilik/actions";
 import { UmkmForm } from "@/features/umkm/components/umkm-form";
 import type { Umkm } from "@/features/umkm/types";
-import { ActivityPing } from "@/features/activity/components/activity-ping";
 
 /** The shop form of an owner, with the banner above it: how the key works, or "saved". */
 export function OwnerUmkmForm({ item }: { item: Umkm | null }) {
@@ -22,7 +22,6 @@ export function OwnerUmkmForm({ item }: { item: Umkm | null }) {
 
   return (
     <>
-      <ActivityPing label="Form data usaha pemilik" />
       {savedMessage ? (
         <div className="alert owner-saved" role="status">
           <CircleCheck className="i" style={{ color: "var(--okf)" }} />
@@ -36,7 +35,10 @@ export function OwnerUmkmForm({ item }: { item: Umkm | null }) {
           <KeyRound className="i" />
           <div>
             <b>Anda masuk dengan kunci akses</b>
-            <span>Kunci ini memberi izin untuk mengisi dan mengubah semua data usaha Anda. Titik lokasi akan diperiksa oleh admin desa.</span>
+            <span>
+              Kunci ini memberi izin untuk mengisi dan mengubah semua data usaha Anda. Titik lokasi
+              akan diperiksa oleh admin desa.
+            </span>
           </div>
         </div>
       )}
@@ -48,7 +50,14 @@ export function OwnerUmkmForm({ item }: { item: Umkm | null }) {
           uploadUrl="/api/owner/upload"
           submitLabel={item ? "Simpan perubahan" : "Simpan data usaha"}
           onSaved={saved}
-          footerExtra={item ? <Link className="btn o" href={`/umkm/${item.id}`}><ExternalLink className="i" />Lihat profil</Link> : undefined}
+          footerExtra={
+            item ? (
+              <Link className="btn o" href={`/umkm/${item.id}`}>
+                <ExternalLink className="i" />
+                Lihat profil
+              </Link>
+            ) : undefined
+          }
         />
       </div>
     </>

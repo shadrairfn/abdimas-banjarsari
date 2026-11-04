@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 export interface SelectOption<Value extends string> {
   value: Value;
@@ -32,29 +32,38 @@ export function SelectMenu<Value extends string>({
   trigger,
   disabled,
 }: SelectMenuProps<Value>) {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const current = options.find((option) => option.value === value);
 
   useEffect(() => {
-    if (!open) return;
-    function closeOnOutsideClick(event: MouseEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    if (!isOpen) {
+      return;
     }
+
+    function closeOnOutsideClick(event: MouseEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.stopPropagation();
-        setOpen(false);
-        containerRef.current?.querySelector<HTMLButtonElement>('button[aria-haspopup="listbox"]')?.focus();
+        setIsOpen(false);
+        containerRef.current
+          ?.querySelector<HTMLButtonElement>('button[aria-haspopup="listbox"]')
+          ?.focus();
       }
     }
     document.addEventListener("mousedown", closeOnOutsideClick);
     document.addEventListener("keydown", closeOnEscape);
+
     return () => {
       document.removeEventListener("mousedown", closeOnOutsideClick);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [open]);
+  }, [isOpen]);
 
   return (
     <div className="dd" ref={containerRef} style={{ width }}>
@@ -65,13 +74,13 @@ export function SelectMenu<Value extends string>({
         disabled={disabled}
         aria-label={ariaLabel}
         aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={() => setOpen((previous) => !previous)}
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((isPrevious) => !isPrevious)}
       >
         {trigger ?? <span>{display ?? current?.label}</span>}
         <ChevronDown className={trigger ? "i xs" : "i sm"} />
       </button>
-      {open && (
+      {isOpen && (
         <div className="menu" role="listbox" aria-label={ariaLabel}>
           {options.map((option) => (
             <button
@@ -82,7 +91,7 @@ export function SelectMenu<Value extends string>({
               className={option.value === value ? "on" : ""}
               onClick={() => {
                 onChange(option.value);
-                setOpen(false);
+                setIsOpen(false);
               }}
             >
               {option.label}

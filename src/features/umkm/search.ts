@@ -1,5 +1,5 @@
 import type { Umkm } from "@/features/umkm/types";
-import { distanceKm, type Coordinates } from "@/lib/geo";
+import { type Coordinates, distanceKm } from "@/lib/geo";
 
 export interface UmkmSearchFilter {
   query: string;
@@ -9,14 +9,19 @@ export interface UmkmSearchFilter {
 }
 
 function matchesQuery(item: Umkm, query: string) {
-  if (!query) return true;
+  if (!query) {
+    return true;
+  }
 
   const searchableText = `${item.brand} ${item.ownerName} ${item.products} ${item.address}`;
+
   return searchableText.toLocaleLowerCase("id-ID").includes(query);
 }
 
 function matchesRadius(item: Umkm, center: Coordinates | null, radiusKm: number | null) {
-  if (!center || !radiusKm) return true;
+  if (!center || !radiusKm) {
+    return true;
+  }
 
   return distanceKm(center, item) <= radiusKm;
 }
@@ -26,11 +31,11 @@ export function filterUmkm(items: Umkm[], filter: UmkmSearchFilter) {
   const query = filter.query.trim().toLocaleLowerCase("id-ID");
 
   return items.filter((item) => {
-    const matchesCategory = !filter.subCategory || item.subCategory === filter.subCategory;
+    const hasMatchingCategory = !filter.subCategory || item.subCategory === filter.subCategory;
 
     return (
       matchesQuery(item, query) &&
-      matchesCategory &&
+      hasMatchingCategory &&
       matchesRadius(item, filter.center, filter.radiusKm)
     );
   });

@@ -1,11 +1,11 @@
-# Peta UMKM Banjarsari
+# UMKM Banjarsari Banjarsari
 
 Aplikasi peta interaktif untuk menemukan serta mengelola UMKM di Desa Banjarsari, Kecamatan Bayongbong, Kabupaten Garut.
 
 ## Fitur utama
 
 - Peta interaktif MapLibre dengan peta vektor OpenFreeMap (data OpenStreetMap) yang diwarnai ulang mengikuti tema terang/gelap.
-- Antarmuka mengikuti desain "Peta UMKM — Opsi C" (gaya shadcn/ui, font Geist, warna utama lime).
+- Antarmuka mengikuti desain "UMKM Banjarsari — Opsi C" (gaya shadcn/ui, font Geist, warna utama lime).
 - Marker berbeda untuk kategori Camilan, Makanan, Minuman, serta Kue & Roti.
 - Pencarian berdasarkan nama usaha, pemilik, produk, kampung, dan kategori. Pencarian mengabaikan filter jarak, jadi UMKM di luar radius tetap ditemukan.
 - Peta otomatis berpindah dan menyesuaikan zoom ke hasil pencarian; Enter memilih hasil teratas.
@@ -16,11 +16,11 @@ Aplikasi peta interaktif untuk menemukan serta mengelola UMKM di Desa Banjarsari
 - Radius dapat dinonaktifkan; dalam mode ini hanya UMKM di viewport yang ditampilkan.
 - Dukungan lokasi pengguna melalui Geolocation API.
 - Halaman profil publik untuk setiap UMKM.
-- Dashboard admin untuk menambah, mengedit, dan memverifikasi lokasi.
+- Dashboard admin untuk menambah, mengedit, dan mengelola data UMKM.
 - Endpoint admin untuk menghapus UMKM beserta dialog konfirmasi.
 - Pemilih koordinat melalui klik peta, drag marker, input manual, atau lokasi perangkat.
 - API publik `GET /api/umkm`.
-- Fallback read-only berisi 68 data UMKM apabila Supabase belum dikonfigurasi.
+- Fallback read-only berisi 15 data UMKM apabila Supabase belum dikonfigurasi.
 
 ## Teknologi
 
@@ -84,11 +84,11 @@ Di halaman project Supabase, buka tombol **Connect** atau menu **Settings → AP
 
 Salin nilai berikut:
 
-| Kebutuhan | Nilai Supabase | Environment variable |
-|---|---|---|
-| URL project | Project URL | `NEXT_PUBLIC_SUPABASE_URL` |
-| Key browser | Publishable key atau legacy `anon` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
-| Key seed server | Secret key atau legacy `service_role` | `SUPABASE_SERVICE_ROLE_KEY` |
+| Kebutuhan       | Nilai Supabase                        | Environment variable            |
+| --------------- | ------------------------------------- | ------------------------------- |
+| URL project     | Project URL                           | `NEXT_PUBLIC_SUPABASE_URL`      |
+| Key browser     | Publishable key atau legacy `anon`    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
+| Key seed server | Secret key atau legacy `service_role` | `SUPABASE_SERVICE_ROLE_KEY`     |
 
 Publishable/anon key boleh digunakan oleh aplikasi browser karena akses data tetap dibatasi Row Level Security. Secret/service-role key dapat melewati RLS dan tidak boleh dipublikasikan.
 
@@ -178,7 +178,7 @@ Setelah migration selesai, periksa **Table Editor**. Tabel berikut harus tersedi
 
 ## 7. Seed data UMKM
 
-Impor 68 data awal:
+Impor 15 data awal:
 
 ```bash
 pnpm seed:supabase
@@ -187,7 +187,7 @@ pnpm seed:supabase
 Output yang diharapkan:
 
 ```text
-Seeded 68 UMKM records.
+Seeded 15 UMKM records.
 ```
 
 Seed ini bersifat idempoten dan dapat dijalankan ulang. Data dicocokkan menggunakan `source_no`.
@@ -268,9 +268,9 @@ pnpm dev
 
 Dalam kondisi ini:
 
-- 68 data fallback dari `src/data/umkm.ts` tetap ditampilkan;
+- 15 data fallback dari `src/data/umkm.ts` tetap ditampilkan;
 - dashboard admin berada dalam mode pratinjau;
-- tambah, edit, verifikasi, dan penyimpanan persisten dinonaktifkan.
+- tambah, edit, dan penyimpanan persisten dinonaktifkan.
 
 ## Penggunaan dashboard admin
 
@@ -295,13 +295,13 @@ GET /api/umkm
 
 Query parameter yang tersedia:
 
-| Parameter | Contoh | Keterangan |
-|---|---|---|
-| `q` | `?q=cireng` | Pencarian teks |
-| `subcategory` | `?subcategory=Minuman` | Filter subkategori |
-| `lat` | `?lat=-7.238` | Latitude pusat radius |
-| `lng` | `&lng=107.8395` | Longitude pusat radius |
-| `radius` | `&radius=5` | Radius dalam kilometer |
+| Parameter     | Contoh                 | Keterangan             |
+| ------------- | ---------------------- | ---------------------- |
+| `q`           | `?q=cireng`            | Pencarian teks         |
+| `subcategory` | `?subcategory=Minuman` | Filter subkategori     |
+| `lat`         | `?lat=-7.238`          | Latitude pusat radius  |
+| `lng`         | `&lng=107.8395`        | Longitude pusat radius |
+| `radius`      | `&radius=5`            | Radius dalam kilometer |
 
 Contoh:
 
@@ -376,7 +376,7 @@ pnpm seed:admin
 Periksa:
 
 1. Migration pertama sudah berhasil.
-2. `pnpm seed:supabase` menghasilkan 68 record.
+2. `pnpm seed:supabase` menghasilkan 15 record.
 3. URL dan API key berasal dari project Supabase yang sama.
 4. Tidak ada spasi atau tanda kutip tambahan pada `.env.local`.
 5. Development server sudah direstart setelah environment berubah.
@@ -436,7 +436,7 @@ src/
     └── supabase/              # Client dan konfigurasi Supabase
 
 scripts/
-├── seed-supabase.mjs          # Seed 68 UMKM
+├── seed-supabase.mjs          # Seed 15 UMKM
 └── seed-admin.mjs             # Seed akun admin
 
 supabase/migrations/           # Migration database dan RLS
@@ -451,14 +451,37 @@ supabase/migrations/           # Migration database dan RLS
 
 ## Akurasi lokasi
 
-Workbook sumber tidak memiliki latitude dan longitude. Koordinat 68 data awal merupakan estimasi deterministik berdasarkan nama kampung. Tiga alamat di luar desa diberi status `outside`; data lainnya dimulai sebagai `estimated`.
-
-Admin harus memverifikasi titik di lapangan sebelum mengubah status menjadi `verified`. Titik perkiraan tidak boleh digunakan sebagai navigasi presisi atau dipublikasikan sebagai lokasi resmi.
+Koordinat 15 UMKM mengikuti workbook sumber. Status verifikasi lokasi telah dihapus dari model, database, dan antarmuka. Lokasi perangkat diperoleh melalui izin Geolocation browser; akurasinya mengikuti perangkat dan kondisi sinyal.
 
 ## Sumber data
 
 ```text
-DATA NIB DAN HALAL BANJARSARI BAYONGBONG.xls
+Pendataan_UMKM_Desa_Banjarsari_Garut.xlsx
 ```
 
 Data sensitif seperti NIK dan nomor kontak tidak diekspos oleh aplikasi.
+
+## Standar penulisan kode
+
+Branch pengembangan mengikuti [CleanCode.md](CleanCode.md). Format menggunakan dua spasi, semicolon, LF, dan lebar baris sekitar 100 karakter. ESLint mewajibkan kurung blok, satu statement per baris, pemisahan langkah logika, import terurut, dan melarang ternary bertingkat.
+
+- `src/app` berisi halaman, route handler, dan Server Actions yang tipis.
+- `src/features/admin/*-service.ts` menangani akun, profil, login, callback, dan pemulihan kata sandi.
+- `src/features/categories/category-service.ts` dan `src/features/owner/owner-key-service.ts` menangani masing-masing resource.
+- `src/data` memetakan hasil query database ke model aplikasi.
+- `src/lib/http` menyediakan satu bentuk error/success, wrapper HTTP/action, dan parser input.
+- `src/lib/auth` memverifikasi akun/sesi. Supabase SDK mengelola penerbitan dan refresh token melalui factory client bersama; aplikasi tidak membuat JWT login sendiri.
+- `src/features/umkm/photo-rules.ts` dipakai untuk validasi foto di browser dan server.
+- `CatalogEditor`, `ProductFields`, dan `ProductPhotoInput` memisahkan daftar produk, isian, dan unggah foto. Foto produk dapat diunggah langsung tanpa menambah foto usaha.
+
+Gunakan perintah berikut sebelum mengirim perubahan:
+
+```bash
+pnpm format
+pnpm format:check
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm build
+```
+
+Server Actions memakai `runAction`/`runActionWithData` dan HTTP JSON memakai `asyncHandler`. Error dilempar sebagai `ApiResponse` dan hasil JSON memakai `SuccessResponse`. Redirect autentikasi tetap memakai respons redirect Next.js; kontrol alur `redirect()` dijalankan di luar wrapper action. Nama kolom snake_case dipakai hanya pada batas database; model dan variabel aplikasi memakai camelCase.

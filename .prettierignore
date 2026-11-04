@@ -1,0 +1,10 @@
+/node_modules/
+/.next/
+/.git/
+/.hallmark/
+/public/
+/data-imports/
+/pnpm-lock.yaml
+/src/data/umkm-records.json
+/supabase/
+/CleanCode.md

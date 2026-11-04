@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import type { Map as MapLibreMap } from "maplibre-gl";
+import { useEffect, useRef } from "react";
+
 import { applyMapPalette, MAP_STYLE_URL } from "@/features/map/map-style";
-import { categoryIconSvg, CATEGORY_CONFIG } from "@/features/umkm/categories";
+import { CATEGORY_CONFIG, categoryIconSvg } from "@/features/umkm/categories";
 import type { Umkm } from "@/features/umkm/types";
 import { useTheme } from "@/lib/theme/use-theme";
 
 const LOCATION_ZOOM = 15;
 
 /** Small read-only map with the selected pin of the design, used on the profile page. */
-export function MapLibreLocationMap({ item }: { item: Pick<Umkm, "latitude" | "longitude" | "subCategory"> }) {
+export function MapLibreLocationMap({
+  item,
+}: {
+  item: Pick<Umkm, "latitude" | "longitude" | "subCategory">;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const { theme } = useTheme();
@@ -19,17 +24,25 @@ export function MapLibreLocationMap({ item }: { item: Pick<Umkm, "latitude" | "l
 
   useEffect(() => {
     themeRef.current = theme;
-    if (mapRef.current?.isStyleLoaded()) applyMapPalette(mapRef.current, theme);
+    if (mapRef.current?.isStyleLoaded()) {
+      applyMapPalette(mapRef.current, theme);
+    }
   }, [theme]);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
-    let cancelled = false;
+    if (!container) {
+      return;
+    }
+
+    let isCancelled = false;
     let cleanup: (() => void) | undefined;
 
     import("maplibre-gl").then(({ Map: Map2, Marker, setWorkerUrl }) => {
-      if (cancelled) return;
+      if (isCancelled) {
+        return;
+      }
+
       setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
       const map = new Map2({
         container,
@@ -45,7 +58,9 @@ export function MapLibreLocationMap({ item }: { item: Pick<Umkm, "latitude" | "l
       pin.className = `pin ${CATEGORY_CONFIG[subCategory].pinClass} sel`;
       pin.innerHTML = categoryIconSvg(subCategory);
       pin.querySelector("svg")?.setAttribute("style", "width:22px;height:22px");
-      const marker = new Marker({ element: pin, anchor: "center" }).setLngLat([longitude, latitude]).addTo(map);
+      const marker = new Marker({ element: pin, anchor: "center" })
+        .setLngLat([longitude, latitude])
+        .addTo(map);
 
       mapRef.current = map;
       cleanup = () => {
@@ -56,11 +71,18 @@ export function MapLibreLocationMap({ item }: { item: Pick<Umkm, "latitude" | "l
     });
 
     return () => {
-      cancelled = true;
+      isCancelled = true;
       cleanup?.();
     };
   }, [latitude, longitude, subCategory]);
 
-  return <div ref={containerRef} className="loc-map" data-map-provider="maplibre" role="img" aria-label="Peta lokasi usaha" />;
+  return (
+    <div
+      ref={containerRef}
+      className="loc-map"
+      data-map-provider="maplibre"
+      role="img"
+      aria-label="Peta lokasi usaha"
+    />
+  );
 }
-

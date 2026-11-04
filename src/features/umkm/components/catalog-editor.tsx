@@ -1,21 +1,153 @@
 "use client";
+
 import { Plus, Trash2 } from "lucide-react";
+import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
+
+import { createCatalogProduct } from "@/features/umkm/catalog";
+import { MAX_CATALOG_PRODUCTS } from "@/features/umkm/constants";
 import type { CatalogProduct } from "@/features/umkm/types";
 
-export function CatalogEditor({ products, photos, onChange }: { products: CatalogProduct[]; photos: string[]; onChange: (products: CatalogProduct[]) => void }) {
-  function change(index: number, patch: Partial<CatalogProduct>) { onChange(products.map((product, position) => position === index ? { ...product, ...patch } : product)); }
-  return <section className="catalog-editor span-2" aria-label="Katalog produk">
-    <div className="catalog-editor-heading"><div><h3>Katalog produk</h3><p className="mut">Tambahkan harga dan informasi untuk setiap produk.</p></div><span className="bdg sec">{products.length}/50 produk</span></div>
-    {products.map((product, index) => <div className="catalog-edit-card" key={product.id}>
-      <div className="catalog-edit-top"><strong>Produk {index + 1}</strong><button type="button" className="btn ic g sm" aria-label={`Hapus produk ${index + 1}`} onClick={() => onChange(products.filter((_, position) => position !== index))}><Trash2 className="i sm" /></button></div>
-      <label className="fl"><span className="lbl">Nama produk</span><span className="inp"><input aria-label={`Nama produk ${index + 1}`} value={product.name} required maxLength={120} onChange={event => change(index, { name: event.target.value })} /></span></label>
-      <div className="catalog-edit-pricing"><label className="fl"><span className="lbl">Harga (Rp)</span><span className="inp"><input type="number" aria-label={`Harga produk ${index + 1}`} min={0} max={1000000000000} step={1} value={product.price ?? ""} placeholder="Contoh: 15000" onChange={event => change(index, { price: event.target.value === "" ? null : Number(event.target.value), ...(event.target.value !== "" ? { priceLabel: "" } : {}) })} /></span></label>
-      <label className="fl"><span className="lbl">Satuan</span><span className="inp"><input aria-label={`Satuan produk ${index + 1}`} value={product.unit} maxLength={40} placeholder="porsi / bungkus / gelas" onChange={event => change(index, { unit: event.target.value })} /></span></label></div>
-      {product.price === null && <label className="fl"><span className="lbl">Keterangan harga</span><span className="inp"><input aria-label={`Keterangan harga produk ${index + 1}`} value={product.priceLabel} maxLength={500} placeholder="Misalnya: mulai Rp10.000, atau hubungi penjual" onChange={event => change(index, { priceLabel: event.target.value })} /></span></label>}
-      <label className="fl"><span className="lbl">Keterangan produk</span><span className="inp"><input aria-label={`Keterangan produk ${index + 1}`} value={product.description} maxLength={500} onChange={event => change(index, { description: event.target.value })} /></span></label>
-      <label className="fl"><span className="lbl">Foto produk</span><span className="inp"><select aria-label={`Foto produk ${index + 1}`} value={product.photoUrl} onChange={event => change(index, { photoUrl: event.target.value })}><option value="">Tanpa foto</option>{[...new Set([...photos, ...(product.photoUrl ? [product.photoUrl] : [])])].map((url, position) => <option value={url} key={url}>Foto {position + 1}</option>)}</select></span></label>
-    </div>)}
-    <button type="button" className="btn o" disabled={products.length >= 50} onClick={() => onChange([...products, { id: crypto.randomUUID(), name: "", price: null, priceLabel: "", unit: "", description: "", photoUrl: "" }])}><Plus className="i" />Tambah produk</button>
-    <p className="mut">Unggah foto usaha di bawah untuk memilihnya sebagai foto produk.</p>
-  </section>;
+import { ProductFields } from "./product-fields";
+import { ProductPhotoInput } from "./product-photo-input";
+
+interface CatalogEditorProps {
+  products: CatalogProduct[];
+  photos: string[];
+  uploadEndpoint: string;
+  onChange: Dispatch<SetStateAction<CatalogProduct[]>>;
+  onUploadingChange: (isUploading: boolean) => void;
+}
+
+export function CatalogEditor({
+  products,
+  photos,
+  uploadEndpoint,
+  onChange,
+  onUploadingChange,
+}: CatalogEditorProps) {
+  const [uploadingProductIds, setUploadingProductIds] = useState(new Set<string>());
+  const uploadingProductIdsRef = useRef(new Set<string>());
+  const hasReachedProductLimit = products.length >= MAX_CATALOG_PRODUCTS;
+
+  useEffect(() => {
+    return () => onUploadingChange(false);
+  }, [onUploadingChange]);
+
+  function updateProduct(productId: string, changes: Partial<CatalogProduct>) {
+    // An upload can finish after other fields change; apply it against the latest state by ID.
+    onChange((currentProducts) =>
+      currentProducts.map((product) => {
+        if (product.id === productId) {
+          return { ...product, ...changes };
+        }
+
+        return product;
+      }),
+    );
+  }
+
+  function removeProduct(productId: string) {
+    onChange((currentProducts) => currentProducts.filter((product) => product.id !== productId));
+  }
+
+  function addProduct() {
+    onChange((currentProducts) => {
+      if (currentProducts.length >= MAX_CATALOG_PRODUCTS) {
+        return currentProducts;
+      }
+
+      return [...currentProducts, createCatalogProduct()];
+    });
+  }
+
+  function changeUploadStatus(productId: string, isUploading: boolean) {
+    const nextUploadingIds = new Set(uploadingProductIdsRef.current);
+    if (isUploading) {
+      nextUploadingIds.add(productId);
+    } else {
+      nextUploadingIds.delete(productId);
+    }
+
+    uploadingProductIdsRef.current = nextUploadingIds;
+    setUploadingProductIds(nextUploadingIds);
+    onUploadingChange(nextUploadingIds.size > 0);
+  }
+
+  return (
+    <section className="catalog-editor span-2" aria-label="Katalog produk">
+      <div className="catalog-editor-heading">
+        <div>
+          <h3>Katalog produk</h3>
+          <p className="mut">Setiap kartu berisi foto, harga, dan informasi satu produk.</p>
+        </div>
+        <span className="bdg sec">
+          {products.length}/{MAX_CATALOG_PRODUCTS} produk
+        </span>
+      </div>
+      {products.length === 0 && (
+        <div className="catalog-empty">
+          <p>Belum ada produk dalam katalog.</p>
+          <p className="mut">Tambahkan produk pertama untuk mengisi foto dan harganya.</p>
+        </div>
+      )}
+      <div className="catalog-product-list">
+        {products.map((product, index) => {
+          const productNumber = index + 1;
+          const isUploadingPhoto = uploadingProductIds.has(product.id);
+
+          return (
+            <section
+              className="catalog-edit-card"
+              key={product.id}
+              aria-label={`Produk ${productNumber}`}
+            >
+              <header className="catalog-edit-top">
+                <div className="catalog-product-heading">
+                  <span className="catalog-product-number">{productNumber}</span>
+                  <div>
+                    <h4>Produk {productNumber}</h4>
+                    <span className="mut">{product.name || "Produk baru"}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn o sm"
+                  aria-label={`Hapus produk ${productNumber}`}
+                  disabled={isUploadingPhoto}
+                  onClick={() => removeProduct(product.id)}
+                >
+                  <Trash2 className="i sm" />
+                  Hapus produk
+                </button>
+              </header>
+              <div className="catalog-edit-body">
+                <ProductPhotoInput
+                  productNumber={productNumber}
+                  photoUrl={product.photoUrl}
+                  businessPhotos={photos}
+                  uploadEndpoint={uploadEndpoint}
+                  onPhotoChange={(photoUrl) => updateProduct(product.id, { photoUrl })}
+                  onUploadingChange={(isUploading) => changeUploadStatus(product.id, isUploading)}
+                />
+                <ProductFields
+                  product={product}
+                  productNumber={productNumber}
+                  onChange={(changes) => updateProduct(product.id, changes)}
+                />
+              </div>
+            </section>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        className="btn o catalog-add-product"
+        disabled={hasReachedProductLimit}
+        onClick={addProduct}
+      >
+        <Plus className="i" />
+        Tambah produk
+      </button>
+    </section>
+  );
 }

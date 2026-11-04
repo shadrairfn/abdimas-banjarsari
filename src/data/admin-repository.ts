@@ -1,4 +1,5 @@
 import "server-only";
+
 import { ApiResponse } from "@/lib/http/api-response";
 import { createSupabaseAdminClient, isServiceRoleConfigured } from "@/lib/supabase/admin-client";
 
@@ -24,7 +25,7 @@ export async function listAdmins(): Promise<AdminUser[]> {
   }
 
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
+  const { data: adminRows, error } = await supabase
     .from("admins")
     .select("id, user_id, email, full_name, is_active, role, google_login_allowed, created_at")
     .order("created_at", { ascending: true });
@@ -33,7 +34,7 @@ export async function listAdmins(): Promise<AdminUser[]> {
     throw new ApiResponse(500, `Gagal memuat daftar admin: ${error.message}`);
   }
 
-  return data.map((row) => ({
+  return adminRows.map((row) => ({
     id: row.id,
     userId: row.user_id,
     email: row.email,

@@ -8,6 +8,7 @@ const themeListeners = new Set<() => void>();
 
 function subscribeToTheme(listener: () => void) {
   themeListeners.add(listener);
+
   return () => {
     themeListeners.delete(listener);
   };
@@ -17,7 +18,9 @@ function subscribeToTheme(listener: () => void) {
 function readTheme(): Theme {
   try {
     const saved = localStorage.getItem(THEME_STORAGE_KEY);
-    if (saved === "light" || saved === "dark") return saved;
+    if (saved === "light" || saved === "dark") {
+      return saved;
+    }
   } catch {
     // Storage can be blocked by the browser, then the system preference is used.
   }

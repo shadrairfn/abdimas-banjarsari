@@ -1,10 +1,11 @@
 import "server-only";
+
 import { umkmData as fallbackData } from "@/data/umkm";
 import type { CatalogProduct, SocialLink, Umkm, UmkmSubCategory } from "@/features/umkm/types";
 import { idSchema } from "@/features/umkm/validation";
 import { ApiResponse } from "@/lib/http/api-response";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const UMKM_COLUMNS = "*,categories!inner(name)";
@@ -34,10 +35,16 @@ export type DatabaseUmkm = {
 
 // Rows saved before the socials column existed only have the single `website` text.
 function readSocials(row: DatabaseUmkm): SocialLink[] {
-  if (Array.isArray(row.socials) && row.socials.length > 0) return row.socials.map(link => link.platform === "Lainnya" && !link.customName ? { ...link, customName: "Lainnya" } : link);
+  if (Array.isArray(row.socials) && row.socials.length > 0) {
+    return row.socials.map((link) =>
+      link.platform === "Lainnya" && !link.customName ? { ...link, customName: "Lainnya" } : link,
+    );
+  }
+
   return row.website?.trim() ? [{ platform: "Situs web", handle: row.website.trim() }] : [];
 }
 
+/** Map database columns into the public business model without exposing database-only fields. */
 export function toPublicUmkm(row: DatabaseUmkm): Umkm {
   const relation = Array.isArray(row.categories) ? row.categories[0] : row.categories;
 
@@ -77,18 +84,17 @@ export async function listUmkm(): Promise<Umkm[]> {
   }
 
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
+  const { data: businessRows, error } = await supabase
     .from("umkm")
     .select(UMKM_COLUMNS)
     .eq("is_active", true)
     .order("name");
 
-
   if (error) {
     throw new ApiResponse(500, `Gagal memuat data UMKM: ${error.message}`);
   }
 
-  return (data as unknown as DatabaseUmkm[]).map(toPublicUmkm);
+  return (businessRows as unknown as DatabaseUmkm[]).map(toPublicUmkm);
 }
 
 /**
@@ -106,19 +112,18 @@ export async function getUmkm(id: string): Promise<Umkm | undefined> {
   }
 
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
+  const { data: businessRow, error } = await supabase
     .from("umkm")
     .select(UMKM_COLUMNS)
     .eq("id", id)
     .eq("is_active", true)
     .maybeSingle();
 
-
   if (error) {
     throw new ApiResponse(500, `Gagal memuat data UMKM: ${error.message}`);
   }
 
-  return data ? toPublicUmkm(data as unknown as DatabaseUmkm) : undefined;
+  return businessRow ? toPublicUmkm(businessRow as unknown as DatabaseUmkm) : undefined;
 }
 
 /**
@@ -128,16 +133,15 @@ export async function getUmkm(id: string): Promise<Umkm | undefined> {
  */
 export async function getUmkmForOwner(id: string): Promise<Umkm | undefined> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
+  const { data: businessRow, error } = await supabase
     .from("umkm")
     .select(UMKM_COLUMNS)
     .eq("id", id)
     .maybeSingle();
 
-
   if (error) {
     throw new ApiResponse(500, `Gagal memuat data UMKM: ${error.message}`);
   }
 
-  return data ? toPublicUmkm(data as unknown as DatabaseUmkm) : undefined;
+  return businessRow ? toPublicUmkm(businessRow as unknown as DatabaseUmkm) : undefined;
 }
