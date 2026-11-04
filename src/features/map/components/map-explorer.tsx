@@ -1036,31 +1036,6 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
 
         {searchCard}
 
-        {!isDetailOpen && (
-          <div className="map-top-actions">
-            <button
-              type="button"
-              className="btn ic o"
-              aria-label="Tentang"
-              title="Tentang"
-              onClick={() => setIsAboutOpen(true)}
-            >
-              <Info className="i" />
-            </button>
-            <Link className="btn ic o" href="/admin" aria-label="Admin" title="Admin">
-              <ShieldCheck className="i" />
-            </Link>
-            <button
-              type="button"
-              className="btn ic o"
-              aria-label="Tema"
-              title="Tema"
-              onClick={toggleTheme}
-            >
-              <ThemeIcon className="i" />
-            </button>
-          </div>
-        )}
 
         <div className={`fcard map-zoom${isDetailOpen ? " left" : ""}`}>
           <button
