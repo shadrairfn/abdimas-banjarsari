@@ -446,13 +446,25 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
   const mapControlsRef = useRef<MapControls | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
-  const ranked = useMemo(
+  const visibleEntries = useMemo(
     () => rankItems(initialItems, { query, category, area, center, viewport }),
     [area, category, center, initialItems, query, viewport],
   );
+  // The carousel keeps its reference point and membership while the camera moves.
+  const ranked = useMemo(
+    () =>
+      rankItems(initialItems, {
+        query,
+        category,
+        area: area === "viewport" ? "all" : area,
+        center,
+        viewport: null,
+      }),
+    [area, category, center, initialItems, query],
+  );
   const isSearching = query.trim().length > 0;
 
-  const mapItems = useMemo(() => ranked.map((entry) => entry.item), [ranked]);
+  const mapItems = useMemo(() => visibleEntries.map((entry) => entry.item), [visibleEntries]);
   const activeIndex = ranked.findIndex((entry) => entry.item.id === selectedId);
   const activeEntry = ranked[activeIndex] ?? null;
   const detailItem = isDetailOpen
@@ -513,17 +525,21 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
   const changeArea = useCallback(
     (value: string) => {
       const nextArea: Area = value === "all" || value === "viewport" ? value : Number(value);
+      const referenceCenter = camera
+        ? { latitude: camera.latitude, longitude: camera.longitude }
+        : center;
+      setCenter(referenceCenter);
       setArea(nextArea);
       if (typeof nextArea === "number") {
         setFitRequest((current) => ({
           key: current.key + 1,
-          center,
+          center: referenceCenter,
           radiusKm: nextArea,
           padding: {},
         }));
       }
     },
-    [center],
+    [camera, center],
   );
 
   const handleViewportChange = useCallback(
@@ -531,7 +547,6 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
       setViewport(nextViewport);
       setCamera({ ...nextViewport.center, zoom: nextViewport.zoom });
       if (isUserInitiated) {
-        setCenter(nextViewport.center);
         followRef.current = false;
         setShouldFollowUser(false);
       }
@@ -1462,10 +1477,10 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
       <Dialog open={isListOpen} onClose={() => setIsListOpen(false)} labelledBy="list-title">
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h2 id="list-title">Daftar UMKM</h2>
-          <p>{ranked.length} usaha sesuai pencarian, diurutkan dari yang terdekat.</p>
+          <p>{visibleEntries.length} usaha sesuai pencarian, diurutkan dari yang terdekat.</p>
         </div>
         <div style={{ maxHeight: "50vh", overflow: "auto", margin: "0 -8px" }}>
-          {ranked.map(({ item, distance }) => (
+          {visibleEntries.map(({ item, distance }) => (
             <button
               key={item.id}
               type="button"
