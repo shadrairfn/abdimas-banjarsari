@@ -91,7 +91,8 @@ const AREA_OPTIONS: SelectOption<string>[] = [
   { value: "20", label: "≤ 20 km" },
   { value: "viewport", label: "Area peta" },
 ];
-const DEFAULT_RADIUS_KM = 0.05;
+const DEFAULT_AREA: Area = "viewport";
+const INITIAL_VIEW_RADIUS_KM = 0.05;
 const FOCUS_MIN_ZOOM = 15.5;
 const DETAIL_PANEL_PADDING = 396;
 const PHONE_DOCK_PADDING = 200;
@@ -384,7 +385,7 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
       : (restored?.center ?? getDefaultMapCenter(initialItems));
   const startArea: Area = isOpenedFromLink
     ? "all"
-    : (parseSavedArea(restored?.area) ?? DEFAULT_RADIUS_KM);
+    : (parseSavedArea(restored?.area) ?? DEFAULT_AREA);
 
   const [query, setQuery] = useState(restored?.query ?? "");
   const [category, setCategory] = useState<CategoryFilter>(
@@ -427,10 +428,12 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
       };
     }
 
+    const viewRadiusKm = startArea === "viewport" ? INITIAL_VIEW_RADIUS_KM : null;
+
     return {
       key: 0,
       center: startCenter,
-      radiusKm: typeof startArea === "number" ? startArea : null,
+      radiusKm: typeof startArea === "number" ? startArea : viewRadiusKm,
     };
   });
   const watchIdRef = useRef<number | null>(null);
@@ -701,6 +704,7 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
   /** Center on the visitor while preserving the selected search distance. */
   function handleFirstFix(position: Coordinates) {
     const currentArea = areaRef.current;
+    const viewRadiusKm = typeof currentArea === "number" ? currentArea : INITIAL_VIEW_RADIUS_KM;
     setCenter(position);
 
     if (messageTimerRef.current !== null) {
@@ -711,8 +715,8 @@ export function MapExplorer({ initialItems, initialSelectedId }: MapExplorerProp
     setFitRequest((current) => ({
       key: current.key + 1,
       center: position,
-      radiusKm: typeof currentArea === "number" ? currentArea : null,
-      zoom: typeof currentArea === "number" ? undefined : NEARBY_ZOOM,
+      radiusKm: currentArea === "all" ? null : viewRadiusKm,
+      zoom: currentArea === "all" ? NEARBY_ZOOM : undefined,
       padding: focusPadding(detailOpenRef.current),
     }));
   }
