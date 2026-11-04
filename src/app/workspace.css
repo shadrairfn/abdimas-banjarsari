@@ -705,11 +705,25 @@ html[data-rail-expanded="true"] {
   left: calc(100% + 8px);
   width: 112px;
   height: 80px;
-  overflow: hidden;
-  border: 3px solid var(--card);
+  overflow: visible;
+  border: 3px solid var(--pri);
   border-radius: var(--rl);
   background: var(--card);
   box-shadow: var(--shs);
+}
+.marker-photo::after {
+  content: "";
+  position: absolute;
+  left: -3px;
+  bottom: -3px;
+  width: 24px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--pri);
+  box-shadow: 0 1px 2px var(--card);
+  transform: rotate(135deg);
+  transform-origin: left center;
+  pointer-events: none;
 }
 .is-selected > .marker-photo {
   display: block;
@@ -719,6 +733,7 @@ html[data-rail-expanded="true"] {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: calc(var(--rl) - 3px);
 }
 @media (max-width: 767px) {
   .marker-photo {
